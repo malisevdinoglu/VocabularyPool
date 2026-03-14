@@ -15,10 +15,28 @@ struct SettingsView: View {
     @ObservedObject private var notificationManager = NotificationManager.shared
     @State private var showingAddNotification = false
     @State private var notificationPermissionStatus: String = "Kontrol ediliyor..."
+    // @AppStorage ile otomatik UserDefaults senkronizasyonu
+    @AppStorage("isPracticeSoundEnabled") private var isPracticeSoundEnabled: Bool = true
     
     var body: some View {
         NavigationStack {
             List {
+                // Sound Settings Section
+                Section {
+                    Toggle(isOn: $isPracticeSoundEnabled) {
+                        HStack {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .foregroundStyle(.purple)
+                            Text("Pratik Sesi")
+                        }
+                    }
+                    // @AppStorage otomatik olarak UserDefaults'a kaydeder, onChange'e gerek yok
+                } header: {
+                    Text("Ses Ayarları")
+                } footer: {
+                    Text("Kapalı olduğunda English→Turkish ve Turkish→English pratiklerinde kelimeler sesli söylenmez. Listening Challenge alıştırmasında ses her zaman açıktır. Dinlediğiniz medyanın kesilmesini önler.")
+                }
+                
                 // Permission Status Section
                 Section {
                     HStack {

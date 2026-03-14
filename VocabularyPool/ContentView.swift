@@ -102,6 +102,12 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToVocabularyTab"))) { _ in
             selectedTab = 0
         }
+        .onAppear {
+            // Check for new week
+            if PracticeGoals.shared.isNewWeek() {
+                PracticeGoals.shared.updateWeekStart()
+            }
+        }
     }
 }
 

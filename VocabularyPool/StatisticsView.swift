@@ -29,6 +29,11 @@ struct DailyStatistic: Identifiable {
     let turkishToEnglish: Int
     let listening: Int
     
+    // Goal snapshot - o günün hedefleri
+    let goalEngToTr: Int
+    let goalTrToEng: Int
+    let goalListening: Int
+    
     var total: Int {
         englishToTurkish + turkishToEnglish + listening
     }
@@ -39,6 +44,8 @@ struct StatisticsView: View {
     @Query(sort: \PracticeSession.date, order: .reverse) private var sessions: [PracticeSession]
     
     @State private var selectedPeriod: StatisticsPeriod = .week
+    @State private var showingGoalsSheet = false
+    @ObservedObject var goals = PracticeGoals.shared
     
     var filteredStatistics: [DailyStatistic] {
         let calendar = Calendar.current
@@ -60,13 +67,21 @@ struct StatisticsView: View {
             let trToEng = daySessions.reduce(0) { $0 + $1.turkishToEnglishCount }
             let listening = daySessions.reduce(0) { $0 + $1.listeningCount }
             
+            // Get goal snapshot from first session (all sessions on same day have same goals)
+            let goalEngToTr = daySessions.first?.dailyGoalEngToTr ?? 0
+            let goalTrToEng = daySessions.first?.dailyGoalTrToEng ?? 0
+            let goalListening = daySessions.first?.dailyGoalListening ?? 0
+            
             // Only add if there is data
             if engToTr + trToEng + listening > 0 {
                 dailyStats.append(DailyStatistic(
                     date: date,
                     englishToTurkish: engToTr,
                     turkishToEnglish: trToEng,
-                    listening: listening
+                    listening: listening,
+                    goalEngToTr: goalEngToTr,
+                    goalTrToEng: goalTrToEng,
+                    goalListening: goalListening
                 ))
             }
         }
@@ -158,7 +173,10 @@ struct StatisticsView: View {
                                     .foregroundStyle(.gray)
                             } else {
                                 ForEach(filteredStatistics) { stat in
-                                    DailyCard(statistic: stat)
+                                    DailyCard(
+                                        statistic: stat,
+                                        goalStatus: checkGoalCompletionWithSnapshot(stat: stat)
+                                    )
                                 }
                             }
                         }
@@ -170,6 +188,53 @@ struct StatisticsView: View {
             .navigationTitle("Statistics")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingGoalsSheet = true
+                    } label: {
+                        Image(systemName: "target")
+                            .foregroundStyle(.white)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingGoalsSheet) {
+                GoalsSettingsView()
+            }
+        }
+    }
+    
+    // Helper function to check goal completion using snapshot data
+    private func checkGoalCompletionWithSnapshot(stat: DailyStatistic) -> GoalStatus {
+        // Eğer o gün için hedef snapshot'ı yoksa (eski veri), hedef kontrolü yapma
+        guard stat.goalEngToTr > 0 || stat.goalTrToEng > 0 || stat.goalListening > 0 else {
+            return .noGoals
+        }
+        
+        var completedCount = 0
+        var totalGoals = 0
+        
+        if stat.goalEngToTr > 0 {
+            totalGoals += 1
+            if stat.englishToTurkish >= stat.goalEngToTr { completedCount += 1 }
+        }
+        
+        if stat.goalTrToEng > 0 {
+            totalGoals += 1
+            if stat.turkishToEnglish >= stat.goalTrToEng { completedCount += 1 }
+        }
+        
+        if stat.goalListening > 0 {
+            totalGoals += 1
+            if stat.listening >= stat.goalListening { completedCount += 1 }
+        }
+        
+        if completedCount == totalGoals {
+            return .allCompleted
+        } else if completedCount > 0 {
+            return .partial(completed: completedCount, total: totalGoals)
+        } else {
+            return .none
         }
     }
 }
@@ -214,6 +279,7 @@ struct SummaryCard: View {
 
 struct DailyCard: View {
     let statistic: DailyStatistic
+    let goalStatus: GoalStatus
     
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
@@ -232,9 +298,57 @@ struct DailyCard: View {
         }
     }
     
+    private var goalCompletionText: String {
+        switch goalStatus {
+        case .allCompleted:
+            if case .partial(let completed, let total) = goalStatus {
+                return "\(completed)/\(total)"
+            }
+            // Count completed goals
+            var completed = 0
+            var total = 0
+            if statistic.goalEngToTr > 0 {
+                total += 1
+                if statistic.englishToTurkish >= statistic.goalEngToTr { completed += 1 }
+            }
+            if statistic.goalTrToEng > 0 {
+                total += 1
+                if statistic.turkishToEnglish >= statistic.goalTrToEng { completed += 1 }
+            }
+            if statistic.goalListening > 0 {
+                total += 1
+                if statistic.listening >= statistic.goalListening { completed += 1 }
+            }
+            return "\(completed)/\(total)"
+        case .partial(let completed, let total):
+            return "\(completed)/\(total)"
+        case .none:
+            var total = 0
+            if statistic.goalEngToTr > 0 { total += 1 }
+            if statistic.goalTrToEng > 0 { total += 1 }
+            if statistic.goalListening > 0 { total += 1 }
+            return "0/\(total)"
+        case .noGoals:
+            return ""
+        }
+    }
+    
+    private var goalCompletionColor: Color {
+        switch goalStatus {
+        case .allCompleted:
+            return .green
+        case .partial:
+            return .orange
+        case .none:
+            return .red
+        case .noGoals:
+            return .gray
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 12) {
-            // Header
+            // Header with Goal Badge
             HStack {
                 Text(dayLabel)
                     .font(.headline)
@@ -242,10 +356,19 @@ struct DailyCard: View {
                 
                 Spacer()
                 
-                Text("\(statistic.total) exercises")
-                    .font(.caption)
-                    .foregroundStyle(.gray)
+                // Goal completion ratio - simple text only
+                if case .noGoals = goalStatus {
+                    Text("\(statistic.total) exercises")
+                        .font(.caption)
+                        .foregroundStyle(.gray)
+                } else {
+                    Text(goalCompletionText)
+                        .font(.caption)
+                        .foregroundStyle(goalCompletionColor)
+                }
             }
+
+            
             
             Divider().background(Color.gray.opacity(0.3))
             
@@ -300,6 +423,157 @@ struct StatBadge: View {
             Text(label)
                 .font(.system(size: 10))
                 .foregroundStyle(.gray)
+        }
+    }
+}
+
+struct WeeklySummaryCard: View {
+    let weekStart: Date
+    let sessions: [PracticeSession]
+    let goals: PracticeGoals
+    
+    var weekTotal: (engToTr: Int, trToEng: Int, listening: Int, daysWithActivity: Int) {
+        let calendar = Calendar.current
+        let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart)!
+        
+        let weekSessions = sessions.filter {
+            $0.date >= weekStart && $0.date < weekEnd
+        }
+        
+        // Count unique days with activity
+        let uniqueDays = Set(weekSessions.map { calendar.startOfDay(for: $0.date) })
+        
+        return (
+            weekSessions.reduce(0) { $0 + $1.englishToTurkishCount },
+            weekSessions.reduce(0) { $0 + $1.turkishToEnglishCount },
+            weekSessions.reduce(0) { $0 + $1.listeningCount },
+            uniqueDays.count
+        )
+    }
+    
+    var weekRangeText: String {
+        let calendar = Calendar.current
+        let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        formatter.locale = Locale(identifier: "tr_TR")
+        
+        return "\(formatter.string(from: weekStart)) - \(formatter.string(from: weekEnd))"
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bu Hafta")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white)
+                    Text(weekRangeText)
+                        .font(.caption)
+                        .foregroundStyle(.gray)
+                }
+                
+                Spacer()
+                
+                // Days practiced badge
+                VStack(spacing: 2) {
+                    Text("\(weekTotal.daysWithActivity)")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white)
+                    Text("gün")
+                        .font(.caption2)
+                        .foregroundStyle(.gray)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.blue.opacity(0.2))
+                .cornerRadius(8)
+            }
+            
+            Divider().background(Color.gray.opacity(0.3))
+            
+            // Progress bars
+            VStack(spacing: 12) {
+                if goals.englishToTurkishGoal > 0 {
+                    WeeklyGoalProgress(
+                        title: "English → Turkish",
+                        current: weekTotal.engToTr,
+                        dailyGoal: goals.englishToTurkishGoal,
+                        color: .blue
+                    )
+                }
+                
+                if goals.turkishToEnglishGoal > 0 {
+                    WeeklyGoalProgress(
+                        title: "Turkish → English",
+                        current: weekTotal.trToEng,
+                        dailyGoal: goals.turkishToEnglishGoal,
+                        color: .green
+                    )
+                }
+                
+                if goals.listeningGoal > 0 {
+                    WeeklyGoalProgress(
+                        title: "Listening",
+                        current: weekTotal.listening,
+                        dailyGoal: goals.listeningGoal,
+                        color: .orange
+                    )
+                }
+            }
+        }
+        .padding()
+        .background(Color(uiColor: .systemGray6).opacity(0.15))
+        .cornerRadius(16)
+    }
+}
+
+struct WeeklyGoalProgress: View {
+    let title: String
+    let current: Int
+    let dailyGoal: Int
+    let color: Color
+    
+    var weeklyTarget: Int {
+        dailyGoal * 7
+    }
+    
+    var progress: Double {
+        guard weeklyTarget > 0 else { return 0 }
+        return min(Double(current) / Double(weeklyTarget), 1.0)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.white)
+                Spacer()
+                Text("\(current) / \(weeklyTarget)")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(current >= weeklyTarget ? .green : .white)
+            }
+            
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    // Background
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(height: 8)
+                    
+                    // Progress
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(color)
+                        .frame(width: geometry.size.width * progress, height: 8)
+                }
+            }
+            .frame(height: 8)
         }
     }
 }

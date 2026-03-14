@@ -27,8 +27,9 @@ struct QuizView: View {
     @State private var showAnswerRevealed = false
     @FocusState private var isInputFocused: Bool
     
-    // Sound toggle
-    @State private var isSoundEnabled = true
+    // Sound toggle - @AppStorage ile otomatik senkronizasyon
+    // Listening modunda ses her zaman açık olacak, diğer modlarda bu ayar kontrol edilecek
+    @AppStorage("isPracticeSoundEnabled") private var isSoundEnabled: Bool = true
     
     // Speech synthesizer
     private let speechSynthesizer = AVSpeechSynthesizer()
@@ -210,19 +211,29 @@ struct QuizView: View {
         .navigationTitle("Practice")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    isSoundEnabled.toggle()
-                } label: {
-                    Image(systemName: isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                        .foregroundStyle(isSoundEnabled ? .blue : .gray)
+            // Listening modunda ses butonu gösterme (zaten her zaman açık)
+            if config.type != .listening {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isSoundEnabled.toggle()
+                        // @AppStorage otomatik kaydeder, manuel kaydetmeye gerek yok
+                    } label: {
+                        Image(systemName: isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                            .foregroundStyle(isSoundEnabled ? .blue : .gray)
+                    }
                 }
             }
         }
         .onAppear {
-            // Configure audio session for playback
+            // Configure audio session based on sound preference
             do {
-                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+                if isSoundEnabled {
+                    // Ses açıksa playback mode (medya kesilir)
+                    try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+                } else {
+                    // Ses kapalıysa ambient mode (medya kesintiye uğramaz)
+                    try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+                }
                 try AVAudioSession.sharedInstance().setActive(true)
             } catch {
                 print("Failed to configure audio session: \(error)")
@@ -266,7 +277,11 @@ struct QuizView: View {
     }
     
     private func speakCurrentWord() {
-        guard currentQuestionIndex < questions.count, isSoundEnabled else { return }
+        guard currentQuestionIndex < questions.count else { return }
+        
+        // Listening modunda ses her zaman açık, diğer modlarda ayara bakılır
+        let shouldPlaySound = config.type == .listening || isSoundEnabled
+        guard shouldPlaySound else { return }
         
         let currentWord = questions[currentQuestionIndex]
         let textToSpeak: String
@@ -437,10 +452,31 @@ struct QuizView: View {
             let sessions = try modelContext.fetch(descriptor)
             let session: PracticeSession
             
+            // Determine if this is the first session of the day
+            let isFirstSessionToday = sessions.isEmpty
+            
             if let existingSession = sessions.first {
                 session = existingSession
+                
+                // Backfill goal snapshot if not set (session created before goals were set)
+                let currentGoals = PracticeGoals.shared
+                if session.dailyGoalEngToTr == 0 && session.dailyGoalTrToEng == 0 && session.dailyGoalListening == 0 {
+                    // Only update if current goals are set
+                    if currentGoals.hasAnyGoals() {
+                        session.dailyGoalEngToTr = currentGoals.englishToTurkishGoal
+                        session.dailyGoalTrToEng = currentGoals.turkishToEnglishGoal
+                        session.dailyGoalListening = currentGoals.listeningGoal
+                    }
+                }
             } else {
-                session = PracticeSession(date: today)
+                // First session of the day - capture current goals as snapshot
+                let currentGoals = PracticeGoals.shared
+                session = PracticeSession(
+                    date: today,
+                    dailyGoalEngToTr: currentGoals.englishToTurkishGoal,
+                    dailyGoalTrToEng: currentGoals.turkishToEnglishGoal,
+                    dailyGoalListening: currentGoals.listeningGoal
+                )
                 modelContext.insert(session)
             }
             

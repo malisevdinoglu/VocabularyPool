@@ -21,6 +21,7 @@ class NotificationManager: ObservableObject {
     private let dailyReminderIdentifier = "dailyReminder"
     private let wordReminder13Identifier = "wordReminder_13"
     private let wordReminder20Identifier = "wordReminder_20"
+    private let dailySummaryIdentifier = "dailySummary"
     
     @Published var isDailyReminderEnabled: Bool {
         didSet {
@@ -249,6 +250,67 @@ class NotificationManager: ObservableObject {
                 print("Word reminder scheduled for \(date) at \(hour):00")
             }
         }
+    }
+    
+    // MARK: - Daily Practice Summary
+    
+    /// Schedule a daily notification at 23:55 to summarize the day's practice exercises
+    func scheduleDailySummaryNotification() {
+        // Cancel existing daily summary notification first
+        cancelDailySummaryNotification()
+        
+        // Schedule for 23:55 every day
+        var dateComponents = DateComponents()
+        dateComponents.hour = 23
+        dateComponents.minute = 55
+        
+        let content = UNMutableNotificationContent()
+        content.title = "📊 Günlük Özet"
+        content.body = "Bugün yaptığın alıştırmaları kontrol et!"
+        content.sound = .default
+        content.categoryIdentifier = "DAILY_SUMMARY"
+        
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+        let request = UNNotificationRequest(identifier: dailySummaryIdentifier, content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to schedule daily summary notification: \(error)")
+            } else {
+                print("Daily summary notification scheduled for 23:55")
+            }
+        }
+    }
+    
+    /// Manually send a daily summary notification with the actual practice count
+    func sendDailySummaryNotification(practiceCount: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = "📊 Günlük Özet"
+        
+        if practiceCount == 0 {
+            content.body = "Bugün hiç kelime alıştırması yapmadın."
+        } else if practiceCount == 1 {
+            content.body = "Bugün 1 kelime alıştırması yaptın! 🎉"
+        } else {
+            content.body = "Bugün \(practiceCount) kelime alıştırması yaptın! 🎉"
+        }
+        
+        content.sound = .default
+        
+        // Schedule for immediate delivery
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: "dailySummary_now", content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to send daily summary notification: \(error)")
+            }
+        }
+    }
+    
+    /// Cancel the daily summary notification
+    func cancelDailySummaryNotification() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [dailySummaryIdentifier])
     }
     
     // MARK: - Utility
