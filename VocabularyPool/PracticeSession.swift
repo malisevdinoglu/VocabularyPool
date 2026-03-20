@@ -24,7 +24,6 @@ final class PracticeSession {
     /// Oturum tarihi. Genellikle `Date()` ile oluşturulur ve gün bazında benzersizdir.
     var date: Date
     /// İngilizce'den Türkçe'ye yapılan doğru cevap/alıştırma sayısı.
-    ///
     var englishToTurkishCount: Int
     /// Türkçe'den İngilizce'ye yapılan doğru cevap/alıştırma sayısı.
     ///
