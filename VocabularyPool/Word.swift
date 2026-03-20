@@ -18,7 +18,10 @@ final class Word {
     var wrongCount: Int
     var lastStudied: Date?
     var timestamp: Date
-    
+    /// Set to true when answered incorrectly in a quiz session.
+    /// Reset to false when answered correctly in any subsequent session.
+    var needsReview: Bool = false
+
     init(english: String, turkish: String, englishAlt: String? = nil, turkishAlt: String? = nil, timestamp: Date = Date()) {
         self.english = english
         self.turkish = turkish
@@ -28,5 +31,6 @@ final class Word {
         self.wrongCount = 0
         self.lastStudied = nil
         self.timestamp = timestamp
+        self.needsReview = false
     }
 }

@@ -68,7 +68,8 @@ struct VocabularyExport: Codable {
 
 struct ContentView: View {
     @State private var selectedTab = 0
-    
+    @Query(filter: #Predicate<Word> { $0.needsReview == true }) private var reviewWords: [Word]
+
     var body: some View {
         TabView(selection: $selectedTab) {
             VocabularyListView()
@@ -76,7 +77,7 @@ struct ContentView: View {
                     Label("Vocabulary", systemImage: "book.fill")
                 }
                 .tag(0)
-            
+
             NavigationStack {
                 AddWordView()
             }
@@ -84,21 +85,23 @@ struct ContentView: View {
                 Label("Add Word", systemImage: "plus.circle.fill")
             }
             .tag(1)
-            
+
             NavigationStack {
                 PracticeConfigView()
             }
             .tabItem {
                 Label("Practice", systemImage: "play.circle.fill")
             }
+            .badge(reviewWords.isEmpty ? 0 : reviewWords.count)
             .tag(2)
-            
+
             StatisticsView()
                 .tabItem {
                     Label("Statistics", systemImage: "chart.bar.fill")
                 }
                 .tag(3)
         }
+        .tint(DS.Colors.primary)
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToVocabularyTab"))) { _ in
             selectedTab = 0
         }
@@ -139,54 +142,28 @@ struct VocabularyListView: View {
         NavigationStack {
             List {
                 if words.isEmpty {
-                    ContentUnavailableView("No Words Yet", systemImage: "text.book.closed", description: Text("Tap + to add your first word."))
+                    ContentUnavailableView(
+                        "No Words Yet",
+                        systemImage: "text.book.closed",
+                        description: Text("Tap + to add your first word.")
+                    )
                 } else if filteredWords.isEmpty {
                     ContentUnavailableView.search
                 } else {
                     ForEach(filteredWords) { word in
                         NavigationLink(destination: EditWordView(word: word)) {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    // English with alternative
-                                    if let englishAlt = word.englishAlt, !englishAlt.isEmpty {
-                                        Text("\(word.english) (\(englishAlt))")
-                                            .font(.headline)
-                                    } else {
-                                        Text(word.english)
-                                            .font(.headline)
-                                    }
-                                    
-                                    // Turkish with alternative
-                                    if let turkishAlt = word.turkishAlt, !turkishAlt.isEmpty {
-                                        Text("\(word.turkish) (\(turkishAlt))")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    } else {
-                                        Text(word.turkish)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                                Spacer()
-                                // Simple stats
-                                if word.correctCount > 0 || word.wrongCount > 0 {
-                                    VStack(alignment: .trailing) {
-                                        HStack(spacing: 4) {
-                                            Text("\(word.correctCount)").foregroundStyle(.green)
-                                            Text("/").foregroundStyle(.secondary)
-                                            Text("\(word.wrongCount)").foregroundStyle(.red)
-                                        }
-                                        .font(.caption)
-                                    }
-                                }
-                            }
+                            WordRowView(word: word)
                         }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                     }
                     .onDelete(perform: deleteWords)
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle("Vocabulary")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "Search words")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -383,6 +360,80 @@ struct VocabularyListView: View {
             importAlertMessage = "Import failed: \(error.localizedDescription)"
             showingImportAlert = true
         }
+    }
+}
+
+// MARK: - Word Row Card
+
+struct WordRowView: View {
+    let word: Word
+
+    private var accuracy: Double {
+        let total = word.correctCount + word.wrongCount
+        guard total > 0 else { return -1 }
+        return Double(word.correctCount) / Double(total)
+    }
+
+    private var accentColor: Color {
+        if accuracy < 0    { return DS.Colors.primary.opacity(0.3) }
+        if accuracy >= 0.7 { return DS.Colors.success }
+        if accuracy >= 0.4 { return DS.Colors.warning }
+        return DS.Colors.danger
+    }
+
+    private var accuracyText: String {
+        guard accuracy >= 0 else { return "" }
+        return "\(Int(accuracy * 100))%"
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Left performance accent bar
+            RoundedRectangle(cornerRadius: 2)
+                .fill(accentColor)
+                .frame(width: 4)
+                .padding(.vertical, DS.Spacing.sm)
+
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                    if let alt = word.englishAlt, !alt.isEmpty {
+                        Text("\(word.english) (\(alt))")
+                            .font(.dsHeadline)
+                    } else {
+                        Text(word.english)
+                            .font(.dsHeadline)
+                    }
+
+                    if let alt = word.turkishAlt, !alt.isEmpty {
+                        Text("\(word.turkish) (\(alt))")
+                            .font(.dsCallout)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(word.turkish)
+                            .font(.dsCallout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if accuracy >= 0 {
+                    Text(accuracyText)
+                        .font(.dsCaption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(accentColor)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs)
+                        .background(accentColor.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm + DS.Spacing.xs)
+        }
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
 }
 

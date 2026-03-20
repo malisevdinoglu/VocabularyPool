@@ -24,47 +24,45 @@ struct SettingsView: View {
                 // Sound Settings Section
                 Section {
                     Toggle(isOn: $isPracticeSoundEnabled) {
-                        HStack {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .foregroundStyle(.purple)
+                        HStack(spacing: DS.Spacing.sm) {
+                            DSIconBadge(systemImage: "speaker.wave.2.fill", color: .purple)
                             Text("Pratik Sesi")
                         }
                     }
-                    // @AppStorage otomatik olarak UserDefaults'a kaydeder, onChange'e gerek yok
                 } header: {
                     Text("Ses Ayarları")
                 } footer: {
                     Text("Kapalı olduğunda English→Turkish ve Turkish→English pratiklerinde kelimeler sesli söylenmez. Listening Challenge alıştırmasında ses her zaman açıktır. Dinlediğiniz medyanın kesilmesini önler.")
                 }
-                
+
                 // Permission Status Section
                 Section {
-                    HStack {
-                        Image(systemName: "bell.badge")
-                            .foregroundStyle(.blue)
+                    HStack(spacing: DS.Spacing.sm) {
+                        DSIconBadge(systemImage: "bell.badge.fill", color: DS.Colors.primary)
                         Text("Bildirim İzni")
                         Spacer()
                         Text(notificationPermissionStatus)
+                            .font(.dsCallout)
                             .foregroundStyle(.secondary)
                     }
-                    
+
                     Button("İzin İste") {
                         requestPermission()
                     }
+                    .foregroundStyle(DS.Colors.primary)
                 } header: {
                     Text("Bildirim Durumu")
                 }
-                
+
                 // Daily Reminder Section
                 Section {
                     Toggle(isOn: $notificationManager.isDailyReminderEnabled) {
-                        HStack {
-                            Image(systemName: "clock.fill")
-                                .foregroundStyle(.orange)
+                        HStack(spacing: DS.Spacing.sm) {
+                            DSIconBadge(systemImage: "clock.fill", color: DS.Colors.warning)
                             Text("Günlük Hatırlatıcı")
                         }
                     }
-                    
+
                     if notificationManager.isDailyReminderEnabled {
                         DatePicker(
                             "Hatırlatma Saati",
@@ -77,21 +75,21 @@ struct SettingsView: View {
                 } footer: {
                     Text("Her gün belirlediğiniz saatte hatırlatma bildirimi alırsınız.")
                 }
-                
+
                 // Custom Notifications Section
                 Section {
                     ForEach(customNotifications) { notification in
                         CustomNotificationRow(notification: notification)
                     }
                     .onDelete(perform: deleteNotifications)
-                    
+
                     Button {
                         showingAddNotification = true
                     } label: {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.green)
+                        HStack(spacing: DS.Spacing.sm) {
+                            DSIconBadge(systemImage: "plus", color: DS.Colors.success)
                             Text("Yeni Bildirim Ekle")
+                                .foregroundStyle(DS.Colors.primary)
                         }
                     }
                 } header: {
@@ -149,34 +147,39 @@ struct SettingsView: View {
 
 struct CustomNotificationRow: View {
     @Bindable var notification: CustomNotification
-    
+
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: DS.Spacing.sm) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 Text(notification.title)
-                    .font(.headline)
+                    .font(.dsHeadline)
                 Text(notification.body)
-                    .font(.subheadline)
+                    .font(.dsCallout)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                HStack {
+                HStack(spacing: DS.Spacing.xs) {
                     Text(notification.formattedTime)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(4)
-                    Text(notification.weekdayNames)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.dsCaption)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, 3)
+                        .background(DS.Colors.primary.opacity(0.10))
+                        .foregroundStyle(DS.Colors.primary)
+                        .clipShape(Capsule())
+                    if !notification.weekdayNames.isEmpty {
+                        Text(notification.weekdayNames)
+                            .font(.dsCaption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
             }
-            
+
             Spacer()
-            
+
             Toggle("", isOn: $notification.isEnabled)
                 .labelsHidden()
-                .onChange(of: notification.isEnabled) { oldValue, newValue in
+                .onChange(of: notification.isEnabled) { _, newValue in
                     if newValue {
                         NotificationManager.shared.scheduleCustomNotification(
                             id: notification.id,
@@ -191,7 +194,7 @@ struct CustomNotificationRow: View {
                     }
                 }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, DS.Spacing.xs)
     }
 }
 
@@ -231,7 +234,7 @@ struct AddNotificationView: View {
                 }
                 
                 Section {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: DS.Spacing.sm) {
                         ForEach(weekdays, id: \.0) { day in
                             Button {
                                 if selectedWeekdays.contains(day.0) {
@@ -241,13 +244,14 @@ struct AddNotificationView: View {
                                 }
                             } label: {
                                 Text(day.1)
-                                    .font(.caption)
-                                    .fontWeight(.medium)
+                                    .font(.dsCaption)
+                                    .fontWeight(.semibold)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(selectedWeekdays.contains(day.0) ? Color.blue : Color.gray.opacity(0.2))
-                                    .foregroundStyle(selectedWeekdays.contains(day.0) ? .white : .primary)
-                                    .cornerRadius(8)
+                                    .padding(.vertical, DS.Spacing.sm + DS.Spacing.xs)
+                                    .background(selectedWeekdays.contains(day.0) ? DS.Colors.primary : Color(uiColor: .secondarySystemBackground))
+                                    .foregroundStyle(selectedWeekdays.contains(day.0) ? DS.Colors.onColor : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                    .animation(.easeInOut(duration: 0.12), value: selectedWeekdays.contains(day.0))
                             }
                             .buttonStyle(.plain)
                         }

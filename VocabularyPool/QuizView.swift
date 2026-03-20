@@ -34,18 +34,18 @@ struct QuizView: View {
     // Speech synthesizer
     private let speechSynthesizer = AVSpeechSynthesizer()
     
-    // Colorful gradients for question boxes
+    // Curated gradients for question cards
     private let questionColors: [LinearGradient] = [
-        LinearGradient(colors: [Color(red: 0.2, green: 0.5, blue: 0.9), Color(red: 0.1, green: 0.3, blue: 0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.9, green: 0.3, blue: 0.5), Color(red: 0.7, green: 0.1, blue: 0.3)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.3, green: 0.8, blue: 0.4), Color(red: 0.1, green: 0.6, blue: 0.2)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.9, green: 0.6, blue: 0.2), Color(red: 0.7, green: 0.4, blue: 0.1)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.6, green: 0.3, blue: 0.9), Color(red: 0.4, green: 0.1, blue: 0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.2, green: 0.8, blue: 0.8), Color(red: 0.1, green: 0.6, blue: 0.6)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.9, green: 0.5, blue: 0.3), Color(red: 0.7, green: 0.3, blue: 0.1)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.5, green: 0.3, blue: 0.8), Color(red: 0.3, green: 0.1, blue: 0.6)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.3, green: 0.6, blue: 0.9), Color(red: 0.1, green: 0.4, blue: 0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
-        LinearGradient(colors: [Color(red: 0.8, green: 0.3, blue: 0.6), Color(red: 0.6, green: 0.1, blue: 0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        LinearGradient(colors: [DS.Colors.primary,  Color(red: 0.24, green: 0.20, blue: 0.75)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [DS.Colors.accent,   Color(red: 0.02, green: 0.44, blue: 0.40)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [DS.Colors.warning,  Color(red: 0.65, green: 0.35, blue: 0.01)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [DS.Colors.purple,   Color(red: 0.40, green: 0.25, blue: 0.75)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [Color(red: 0.88, green: 0.28, blue: 0.48), Color(red: 0.68, green: 0.10, blue: 0.32)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [Color(red: 0.18, green: 0.70, blue: 0.72), Color(red: 0.08, green: 0.50, blue: 0.58)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [Color(red: 0.82, green: 0.42, blue: 0.22), Color(red: 0.62, green: 0.27, blue: 0.08)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [Color(red: 0.42, green: 0.22, blue: 0.80), Color(red: 0.28, green: 0.08, blue: 0.60)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [Color(red: 0.22, green: 0.52, blue: 0.90), Color(red: 0.08, green: 0.36, blue: 0.70)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        LinearGradient(colors: [Color(red: 0.72, green: 0.22, blue: 0.58), Color(red: 0.52, green: 0.08, blue: 0.40)], startPoint: .topLeading, endPoint: .bottomTrailing)
     ]
     
     var body: some View {
@@ -53,131 +53,160 @@ struct QuizView: View {
             if questions.isEmpty {
                 ContentUnavailableView("Loading...", systemImage: "clock")
             } else if currentQuestionIndex < questions.count {
-                ScrollView { // Added ScrollView to handle keyboard
-                    VStack(spacing: 30) {
-                        // Progress
-                        Text("Question \(currentQuestionIndex + 1) / \(questions.count)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        // Question Card with Speaker Button
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(questionColors[currentQuestionIndex % questionColors.count])
-                            .frame(height: 200)
-                            .shadow(radius: 5)
-                            .overlay(
-                                // Centered text or icon
-                                Group {
-                                    if config.type == .listening {
-                                        VStack(spacing: 16) {
-                                            Image(systemName: "headphones")
-                                                .font(.system(size: 60))
+                ScrollView {
+                    VStack(spacing: DS.Spacing.lg) {
+
+                        // Question Card
+                        ZStack(alignment: .top) {
+                            RoundedRectangle(cornerRadius: DS.Radius.xl)
+                                .fill(questionColors[currentQuestionIndex % questionColors.count])
+                                .frame(height: 220)
+                                .shadow(color: Color.black.opacity(0.18), radius: 14, x: 0, y: 6)
+                                .overlay(
+                                    Group {
+                                        if config.type == .listening {
+                                            VStack(spacing: DS.Spacing.md) {
+                                                Image(systemName: "headphones")
+                                                    .font(.system(size: 56))
+                                                    .foregroundStyle(.white)
+                                                Text("Listen...")
+                                                    .font(.dsTitle)
+                                                    .foregroundStyle(.white.opacity(0.85))
+                                            }
+                                        } else {
+                                            Text(config.type == .englishToTurkish
+                                                 ? questions[currentQuestionIndex].english
+                                                 : questions[currentQuestionIndex].turkish)
+                                                .font(.dsDisplay)
                                                 .foregroundStyle(.white)
-                                            Text("Listen...")
-                                                .font(.title2)
-                                                .foregroundStyle(.white.opacity(0.8))
+                                                .multilineTextAlignment(.center)
+                                                .padding(.horizontal, DS.Spacing.xl)
                                         }
-                                    } else {
-                                        Text(config.type == .englishToTurkish ? questions[currentQuestionIndex].english : questions[currentQuestionIndex].turkish)
-                                            .font(.system(size: 40, weight: .bold))
-                                            .foregroundStyle(.white)
-                                            .multilineTextAlignment(.center)
-                                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                            .padding(.horizontal, 50)
                                     }
+                                )
+                                .overlay(alignment: .top) {
+                                    // Slim progress bar
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(.white.opacity(0.25))
+                                                .frame(height: 4)
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(.white.opacity(0.85))
+                                                .frame(
+                                                    width: geo.size.width * (Double(currentQuestionIndex + 1) / Double(questions.count)),
+                                                    height: 4
+                                                )
+                                                .animation(.easeInOut(duration: 0.3), value: currentQuestionIndex)
+                                        }
+                                    }
+                                    .frame(height: 4)
+                                    .padding(.horizontal, DS.Spacing.md)
+                                    .padding(.top, DS.Spacing.md)
                                 }
-                            )
-                            .overlay(
-                                // Speaker button in top-right corner
-                                Button {
-                                    speakCurrentWord()
-                                } label: {
-                                    Image(systemName: "speaker.wave.2.fill")
-                                        .font(.title2)
-                                        .foregroundStyle(.white)
-                                        .padding()
+                                .overlay(alignment: .topTrailing) {
+                                    // Speaker button with material background
+                                    Button { speakCurrentWord() } label: {
+                                        Image(systemName: "speaker.wave.2.fill")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                            .frame(width: 36, height: 36)
+                                            .background(.ultraThinMaterial)
+                                            .clipShape(Circle())
+                                    }
+                                    .padding(DS.Spacing.md)
                                 }
-                                , alignment: .topTrailing
-                            )
-                        
+
+                            // Progress label
+                            VStack {
+                                Spacer()
+                                Text("Question \(currentQuestionIndex + 1) of \(questions.count)")
+                                    .font(.dsCaption)
+                                    .foregroundStyle(.white.opacity(0.75))
+                                    .padding(.bottom, DS.Spacing.sm)
+                            }
+                            .frame(height: 220)
+                        }
+
                         // Input Area
-                        VStack(spacing: 16) {
-                            TextField(config.type == .englishToTurkish ? "Enter Turkish meaning" : "Enter English word", text: $userAnswer)
-                                .textFieldStyle(.roundedBorder)
-                                .font(.title2)
+                        VStack(spacing: DS.Spacing.md) {
+                            // Answer field
+                            HStack {
+                                TextField(
+                                    config.type == .englishToTurkish ? "Enter Turkish meaning" : "Enter English word",
+                                    text: $userAnswer
+                                )
+                                .font(.dsHeadline)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .focused($isInputFocused)
                                 .disabled(isProcessing)
-                                .onSubmit {
-                                    checkAnswer()
-                                }
-                                .overlay(
-                                    HStack {
-                                        Spacer()
-                                        if !userAnswer.isEmpty && !isProcessing {
-                                            Button {
-                                                userAnswer = ""
-                                            } label: {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundStyle(.gray)
-                                                    .padding(.trailing, 8)
-                                            }
-                                        }
+                                .onSubmit { checkAnswer() }
+
+                                if !userAnswer.isEmpty && !isProcessing {
+                                    Button { userAnswer = "" } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundStyle(.secondary)
                                     }
-                                )
-                            
+                                }
+                            }
+                            .padding(DS.Spacing.md)
+                            .background(Color(uiColor: .secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+
+                            // Feedback message
                             if let feedback = feedbackMessage {
                                 Text(feedback)
-                                    .font(.headline)
-                                    .foregroundStyle(isCorrect ? .green : .red)
-                                    .transition(.opacity)
+                                    .font(.dsHeadline)
+                                    .foregroundStyle(isCorrect ? DS.Colors.success : DS.Colors.danger)
+                                    .multilineTextAlignment(.center)
+                                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
                             }
-                            
+
+                            // Action buttons
                             Button {
                                 checkAnswer()
                             } label: {
                                 Text("Check Answer")
-                                    .font(.headline)
+                                    .font(.dsHeadline)
                                     .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(isProcessing ? Color.gray : Color.blue)
-                                    .foregroundStyle(.white)
-                                    .cornerRadius(12)
+                                    .frame(height: 52)
+                                    .background(isProcessing ? Color.secondary.opacity(0.25) : DS.Colors.primary)
+                                    .foregroundStyle(DS.Colors.onColor)
+                                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
                             }
                             .disabled(userAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isProcessing || showAnswerRevealed)
-                            
-                            // Show Answer Button - only show if answer was wrong or not yet checked
+
                             if showAnswerRevealed {
                                 Button {
                                     proceedToNext()
                                 } label: {
                                     Text("Next Question")
-                                        .font(.headline)
+                                        .font(.dsHeadline)
                                         .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.green)
-                                        .foregroundStyle(.white)
-                                        .cornerRadius(12)
+                                        .frame(height: 52)
+                                        .background(DS.Colors.success)
+                                        .foregroundStyle(DS.Colors.onColor)
+                                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
                                 }
                             } else {
                                 Button {
                                     showAnswer()
                                 } label: {
                                     Text("Show Answer")
-                                        .font(.subheadline)
+                                        .font(.dsCallout)
                                         .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.orange.opacity(0.2))
-                                        .foregroundStyle(.orange)
-                                        .cornerRadius(12)
+                                        .frame(height: 52)
+                                        .background(DS.Colors.warning.opacity(0.12))
+                                        .foregroundStyle(DS.Colors.warning)
+                                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
                                 }
                                 .disabled(isProcessing)
                             }
                         }
-                        .padding()
+                        .padding(.horizontal, DS.Spacing.md)
                     }
-                    .padding()
+                    .padding(DS.Spacing.md)
                 }
                 .onChange(of: currentQuestionIndex) { oldValue, newValue in
                     // Speak the new word when question changes
@@ -187,28 +216,78 @@ struct QuizView: View {
                 }
             } else {
                 // Results View
-                VStack(spacing: 20) {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 60))
-                        .foregroundStyle(.yellow)
-                    
-                    Text("Session Complete!")
-                        .font(.largeTitle)
-                        .bold()
-                    
-                    Text("Score: \(score) / \(questions.count)")
-                        .font(.title2)
-                    
-                    Button("Finish") {
-                        recordPracticeSession()
-                        dismiss()
+                VStack(spacing: DS.Spacing.lg) {
+                    Spacer()
+
+                    // Score card
+                    VStack(spacing: DS.Spacing.lg) {
+                        Image(systemName: score == questions.count ? "star.fill" : "checkmark.seal.fill")
+                            .font(.system(size: 64))
+                            .foregroundStyle(score == questions.count ? .yellow : DS.Colors.primary)
+
+                        Text("Session Complete!")
+                            .font(.dsTitle)
+
+                        Text("\(score) / \(questions.count)")
+                            .font(.system(size: 52, weight: .bold, design: .rounded))
+                            .foregroundStyle(DS.Colors.primary)
+
+                        // Accuracy bar
+                        let pct = questions.isEmpty ? 0.0 : Double(score) / Double(questions.count)
+                        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                            HStack {
+                                Text("Accuracy")
+                                    .font(.dsCaption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(Int(pct * 100))%")
+                                    .font(.dsCaption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(pct >= 0.7 ? DS.Colors.success : DS.Colors.warning)
+                            }
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .fill(Color.secondary.opacity(0.2))
+                                        .frame(height: 10)
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .fill(pct >= 0.7 ? DS.Colors.success : DS.Colors.warning)
+                                        .frame(width: geo.size.width * pct, height: 10)
+                                }
+                            }
+                            .frame(height: 10)
+                        }
+                        .padding(.horizontal, DS.Spacing.md)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.top)
+                    .padding(DS.Spacing.xl)
+                    .background(Color(uiColor: .secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
+                    .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 4)
+                    .padding(.horizontal, DS.Spacing.md)
+
+                    Spacer()
+
+                    // Action buttons
+                    VStack(spacing: DS.Spacing.sm) {
+                        Button {
+                            recordPracticeSession()
+                            dismiss()
+                        } label: {
+                            Text("Finish")
+                                .font(.dsHeadline)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 52)
+                                .background(DS.Colors.primary)
+                                .foregroundStyle(DS.Colors.onColor)
+                                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                        }
+                    }
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.bottom, DS.Spacing.lg)
                 }
             }
         }
-        .navigationTitle("Practice")
+        .navigationTitle(config.reviewMode ? "Hataları Pekiştir" : "Practice")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // Listening modunda ses butonu gösterme (zaten her zaman açık)
@@ -250,17 +329,21 @@ struct QuizView: View {
     }
     
     private func prepareQuiz() {
+        // Review mode: use only words flagged for review, shuffled
+        if config.reviewMode {
+            questions = allWords.filter { $0.needsReview }.shuffled()
+            return
+        }
+
         // Sort words by timestamp in ascending order (oldest first)
         let sortedWords = allWords.sorted { $0.timestamp < $1.timestamp }
-        
+
         // Filter by range if specified
         var wordsToUse: [Word]
         if let rangeStart = config.wordRangeStart, let rangeEnd = config.wordRangeEnd {
-            // Convert 1-indexed user input to 0-indexed array indices
             let startIndex = max(0, rangeStart - 1)
             let endIndex = min(sortedWords.count - 1, rangeEnd - 1)
-            
-            // Ensure valid range
+
             if startIndex <= endIndex && startIndex < sortedWords.count {
                 wordsToUse = Array(sortedWords[startIndex...endIndex])
             } else {
@@ -269,7 +352,7 @@ struct QuizView: View {
         } else {
             wordsToUse = sortedWords
         }
-        
+
         // Shuffle and select questions
         let shuffled = wordsToUse.shuffled()
         let count = min(config.count, shuffled.count)
@@ -351,13 +434,14 @@ struct QuizView: View {
         }
         
         if isAnswerCorrect {
-            // Correct
+            // Correct — clear review flag so it leaves the mistake queue
             isProcessing = true
             isCorrect = true
             feedbackMessage = "Doğru!"
             score += 1
             currentWord.correctCount += 1
-            
+            currentWord.needsReview = false
+
             // Move to next question after delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 withAnimation {
@@ -369,10 +453,11 @@ struct QuizView: View {
                 }
             }
         } else {
-            // Wrong - don't auto-advance, wait for user to click "Show Answer"
+            // Wrong — mark for review
             isCorrect = false
             feedbackMessage = "Yanlış!"
             currentWord.wrongCount += 1
+            currentWord.needsReview = true
         }
         
         // In listening mode, if correct, show the Turkish meaning
@@ -415,7 +500,8 @@ struct QuizView: View {
         feedbackMessage = message
         isCorrect = false
         showAnswerRevealed = true
-        
+        currentWord.needsReview = true
+
         // Update statistics if not already marked wrong
         if feedbackMessage?.contains("Yanlış") == false {
             currentWord.wrongCount += 1

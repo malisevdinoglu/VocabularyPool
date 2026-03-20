@@ -20,50 +20,80 @@ struct GoalsSettingsView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Week Selector Header
-                HStack {
+                HStack(spacing: DS.Spacing.md) {
                     Button {
                         weekOffset -= 1
                     } label: {
                         Image(systemName: "chevron.left")
-                            .font(.title3)
-                            .foregroundStyle(.blue)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(DS.Colors.primary)
+                            .frame(width: 36, height: 36)
+                            .background(DS.Colors.primary.opacity(0.10))
+                            .clipShape(Circle())
                     }
-                    
+
                     Spacer()
-                    
-                    Text(weekRangeText)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    
+
+                    VStack(spacing: 2) {
+                        Text(weekRangeText)
+                            .font(.dsHeadline)
+                        if weekOffset == 0 {
+                            Text("Bu Hafta")
+                                .font(.dsCaption)
+                                .foregroundStyle(DS.Colors.primary)
+                        } else if weekOffset < 0 {
+                            Text("\(-weekOffset) hafta önce")
+                                .font(.dsCaption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("\(weekOffset) hafta sonra")
+                                .font(.dsCaption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                     Spacer()
-                    
+
                     Button {
                         weekOffset += 1
                     } label: {
                         Image(systemName: "chevron.right")
-                            .font(.title3)
-                            .foregroundStyle(.blue)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(DS.Colors.primary)
+                            .frame(width: 36, height: 36)
+                            .background(DS.Colors.primary.opacity(0.10))
+                            .clipShape(Circle())
                     }
                 }
-                .padding()
+                .padding(DS.Spacing.md)
                 .background(Color(uiColor: .systemGroupedBackground))
-                
+
                 // Goals Form
                 Form {
                     Section {
-                        Stepper("Turkish → English: \(tempTrToEng)", 
-                               value: $tempTrToEng, in: 0...100, step: 5)
-                        
-                        Stepper("English → Turkish: \(tempEngToTr)", 
-                               value: $tempEngToTr, in: 0...100, step: 5)
-                        
-                        Stepper("Listening: \(tempListening)", 
-                               value: $tempListening, in: 0...100, step: 5)
+                        GoalStepperRow(
+                            icon: "globe",
+                            color: DS.Colors.trToEng,
+                            label: "Turkish → English",
+                            value: $tempTrToEng
+                        )
+                        GoalStepperRow(
+                            icon: "text.book.closed.fill",
+                            color: DS.Colors.engToTr,
+                            label: "English → Turkish",
+                            value: $tempEngToTr
+                        )
+                        GoalStepperRow(
+                            icon: "headphones",
+                            color: DS.Colors.listening,
+                            label: "Listening",
+                            value: $tempListening
+                        )
                     } header: {
                         Text("Günlük Hedefler")
                     } footer: {
                         Text("Bu hedefler hafta boyunca (Pazartesi-Pazar) geçerli olacak.")
-                            .font(.caption)
+                            .font(.dsCaption)
                     }
                 }
             }
@@ -127,6 +157,22 @@ struct GoalsSettingsView: View {
         } else {
             let endMonth = monthFormatter.string(from: weekEnd)
             return "\(startDay) \(month) - \(endDay) \(endMonth)"
+        }
+    }
+}
+
+// MARK: - Goal Stepper Row
+
+struct GoalStepperRow: View {
+    let icon: String
+    let color: Color
+    let label: String
+    @Binding var value: Int
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            DSIconBadge(systemImage: icon, color: color)
+            Stepper("\(label): \(value)", value: $value, in: 0...100, step: 5)
         }
     }
 }

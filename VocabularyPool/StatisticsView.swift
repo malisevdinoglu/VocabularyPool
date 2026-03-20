@@ -111,90 +111,85 @@ struct StatisticsView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.black.ignoresSafeArea() // Dark background
-                
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Period Selector
-                        Picker("Period", selection: $selectedPeriod) {
-                            ForEach(StatisticsPeriod.allCases, id: \.self) { period in
-                                Text(period.rawValue).tag(period)
-                            }
+            ScrollView {
+                VStack(spacing: DS.Spacing.lg) {
+                    // Period Selector
+                    Picker("Period", selection: $selectedPeriod) {
+                        ForEach(StatisticsPeriod.allCases, id: \.self) { period in
+                            Text(period.rawValue).tag(period)
                         }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
-                        .colorScheme(.dark) // Force dark appearance for picker
-                        
-                        // Summary Cards ScrollView
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                SummaryCard(
-                                    title: "English → Turkish",
-                                    count: totalStatistics.engToTr,
-                                    icon: "text.book.closed.fill",
-                                    gradient: LinearGradient(colors: [.blue, .blue.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                )
-                                
-                                SummaryCard(
-                                    title: "Turkish → English",
-                                    count: totalStatistics.trToEng,
-                                    icon: "globe",
-                                    gradient: LinearGradient(colors: [.green, .green.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                )
-                                
-                                SummaryCard(
-                                    title: "Listening",
-                                    count: totalStatistics.listening,
-                                    icon: "headphones",
-                                    gradient: LinearGradient(colors: [.orange, .orange.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                )
-                                
-                                SummaryCard(
-                                    title: "Total Words",
-                                    count: totalStatistics.total,
-                                    icon: "star.fill",
-                                    gradient: LinearGradient(colors: [.purple, .purple.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                )
-                            }
-                            .padding(.horizontal)
-                        }
-                        
-                        // History Section
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("History")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal)
-                            
-                            if filteredStatistics.isEmpty {
-                                ContentUnavailableView("No activity in this period", systemImage: "chart.bar")
-                                    .foregroundStyle(.gray)
-                            } else {
-                                ForEach(filteredStatistics) { stat in
-                                    DailyCard(
-                                        statistic: stat,
-                                        goalStatus: checkGoalCompletionWithSnapshot(stat: stat)
-                                    )
-                                }
-                            }
-                        }
-                        .padding(.bottom, 20)
                     }
-                    .padding(.top)
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, DS.Spacing.md)
+
+                    // Summary Cards
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: DS.Spacing.md) {
+                            SummaryCard(
+                                title: "EN → TR",
+                                count: totalStatistics.engToTr,
+                                icon: "text.book.closed.fill",
+                                gradient: LinearGradient(
+                                    colors: [DS.Colors.primary, DS.Colors.primary.opacity(0.7)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                            SummaryCard(
+                                title: "TR → EN",
+                                count: totalStatistics.trToEng,
+                                icon: "globe",
+                                gradient: LinearGradient(
+                                    colors: [DS.Colors.accent, DS.Colors.accent.opacity(0.7)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                            SummaryCard(
+                                title: "Listening",
+                                count: totalStatistics.listening,
+                                icon: "headphones",
+                                gradient: LinearGradient(
+                                    colors: [DS.Colors.warning, DS.Colors.warning.opacity(0.7)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                            SummaryCard(
+                                title: "Total",
+                                count: totalStatistics.total,
+                                icon: "star.fill",
+                                gradient: LinearGradient(
+                                    colors: [DS.Colors.purple, DS.Colors.purple.opacity(0.7)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                        }
+                        .padding(.horizontal, DS.Spacing.md)
+                    }
+
+                    // History Section
+                    VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                        Text("History")
+                            .font(.dsTitle)
+                            .padding(.horizontal, DS.Spacing.md)
+
+                        if filteredStatistics.isEmpty {
+                            ContentUnavailableView("No activity in this period", systemImage: "chart.bar")
+                        } else {
+                            ForEach(filteredStatistics) { stat in
+                                DailyCard(
+                                    statistic: stat,
+                                    goalStatus: checkGoalCompletionWithSnapshot(stat: stat)
+                                )
+                            }
+                        }
+                    }
+                    .padding(.bottom, DS.Spacing.lg)
                 }
+                .padding(.top, DS.Spacing.md)
             }
             .navigationTitle("Statistics")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingGoalsSheet = true
                     } label: {
                         Image(systemName: "target")
-                            .foregroundStyle(.white)
                     }
                 }
             }
@@ -347,52 +342,49 @@ struct DailyCard: View {
     }
     
     var body: some View {
-        VStack(spacing: 12) {
-            // Header with Goal Badge
+        VStack(spacing: DS.Spacing.sm) {
             HStack {
                 Text(dayLabel)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                
+                    .font(.dsHeadline)
+
                 Spacer()
-                
-                // Goal completion ratio - simple text only
+
                 if case .noGoals = goalStatus {
                     Text("\(statistic.total) exercises")
-                        .font(.caption)
-                        .foregroundStyle(.gray)
+                        .font(.dsCaption)
+                        .foregroundStyle(.secondary)
                 } else {
                     Text(goalCompletionText)
-                        .font(.caption)
+                        .font(.dsCaption)
+                        .fontWeight(.semibold)
                         .foregroundStyle(goalCompletionColor)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs)
+                        .background(goalCompletionColor.opacity(0.12))
+                        .clipShape(Capsule())
                 }
             }
 
-            
-            
-            Divider().background(Color.gray.opacity(0.3))
-            
-            // Stats Row
-            HStack(spacing: 20) {
+            Divider()
+
+            HStack(spacing: DS.Spacing.lg) {
                 if statistic.englishToTurkish > 0 {
-                    StatBadge(count: statistic.englishToTurkish, color: .blue, icon: "text.book.closed.fill", label: "E→T")
+                    StatBadge(count: statistic.englishToTurkish, color: DS.Colors.engToTr, icon: "text.book.closed.fill", label: "E→T")
                 }
-                
                 if statistic.turkishToEnglish > 0 {
-                   StatBadge(count: statistic.turkishToEnglish, color: .green, icon: "globe", label: "T→E")
+                    StatBadge(count: statistic.turkishToEnglish, color: DS.Colors.trToEng, icon: "globe", label: "T→E")
                 }
-                
                 if statistic.listening > 0 {
-                    StatBadge(count: statistic.listening, color: .orange, icon: "headphones", label: "Listen")
+                    StatBadge(count: statistic.listening, color: DS.Colors.listening, icon: "headphones", label: "Listen")
                 }
-                
                 Spacer()
             }
         }
-        .padding()
-        .background(Color(uiColor: .systemGray6).opacity(0.15)) // Subtle dark gray
-        .cornerRadius(16)
-        .padding(.horizontal)
+        .padding(DS.Spacing.md)
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .padding(.horizontal, DS.Spacing.md)
     }
 }
 
@@ -401,28 +393,28 @@ struct StatBadge: View {
     let color: Color
     let icon: String
     let label: String
-    
+
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: DS.Spacing.xs) {
             ZStack {
                 Circle()
-                    .stroke(color, lineWidth: 3)
+                    .fill(color.opacity(0.12))
                     .frame(width: 50, height: 50)
-                
+
                 VStack(spacing: 2) {
                     Image(systemName: icon)
                         .font(.caption2)
                         .foregroundStyle(color)
                     Text("\(count)")
-                        .font(.caption)
+                        .font(.dsCaption)
                         .fontWeight(.bold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(color)
                 }
             }
-            
+
             Text(label)
-                .font(.system(size: 10))
-                .foregroundStyle(.gray)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -463,72 +455,50 @@ struct WeeklySummaryCard: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     Text("Bu Hafta")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.white)
+                        .font(.dsTitle)
                     Text(weekRangeText)
-                        .font(.caption)
-                        .foregroundStyle(.gray)
+                        .font(.dsCaption)
+                        .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
-                
-                // Days practiced badge
+
                 VStack(spacing: 2) {
                     Text("\(weekTotal.daysWithActivity)")
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundStyle(.white)
                     Text("gün")
                         .font(.caption2)
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color.blue.opacity(0.2))
-                .cornerRadius(8)
+                .padding(.horizontal, DS.Spacing.sm + DS.Spacing.xs)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(DS.Colors.primary.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
-            
-            Divider().background(Color.gray.opacity(0.3))
-            
-            // Progress bars
-            VStack(spacing: 12) {
+
+            Divider()
+
+            VStack(spacing: DS.Spacing.sm) {
                 if goals.englishToTurkishGoal > 0 {
-                    WeeklyGoalProgress(
-                        title: "English → Turkish",
-                        current: weekTotal.engToTr,
-                        dailyGoal: goals.englishToTurkishGoal,
-                        color: .blue
-                    )
+                    WeeklyGoalProgress(title: "English → Turkish", current: weekTotal.engToTr, dailyGoal: goals.englishToTurkishGoal, color: DS.Colors.engToTr)
                 }
-                
                 if goals.turkishToEnglishGoal > 0 {
-                    WeeklyGoalProgress(
-                        title: "Turkish → English",
-                        current: weekTotal.trToEng,
-                        dailyGoal: goals.turkishToEnglishGoal,
-                        color: .green
-                    )
+                    WeeklyGoalProgress(title: "Turkish → English", current: weekTotal.trToEng, dailyGoal: goals.turkishToEnglishGoal, color: DS.Colors.trToEng)
                 }
-                
                 if goals.listeningGoal > 0 {
-                    WeeklyGoalProgress(
-                        title: "Listening",
-                        current: weekTotal.listening,
-                        dailyGoal: goals.listeningGoal,
-                        color: .orange
-                    )
+                    WeeklyGoalProgress(title: "Listening", current: weekTotal.listening, dailyGoal: goals.listeningGoal, color: DS.Colors.listening)
                 }
             }
         }
-        .padding()
-        .background(Color(uiColor: .systemGray6).opacity(0.15))
-        .cornerRadius(16)
+        .padding(DS.Spacing.md)
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
 }
 
@@ -548,32 +518,30 @@ struct WeeklyGoalProgress: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
             HStack {
                 Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.white)
+                    .font(.dsCaption)
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Text("\(current) / \(weeklyTarget)")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(current >= weeklyTarget ? .green : .white)
+                    .font(.dsCaption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(current >= weeklyTarget ? DS.Colors.success : .primary)
             }
-            
+
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Background
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(height: 8)
-                    
-                    // Progress
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 10)
+                    RoundedRectangle(cornerRadius: 5)
                         .fill(color)
-                        .frame(width: geometry.size.width * progress, height: 8)
+                        .frame(width: geometry.size.width * progress, height: 10)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: progress)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 10)
         }
     }
 }

@@ -126,46 +126,54 @@ struct AddWordView: View {
 struct SuccessView: View {
     let onAddAnother: () -> Void
     let onGoToVocabulary: () -> Void
-    
+
+    @State private var appear = false
+
     var body: some View {
-        VStack(spacing: 30) {
+        VStack(spacing: DS.Spacing.lg) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(.green)
-            
-            Text("Kelime Başarıyla Eklendi!")
-                .font(.title2)
-                .bold()
-            
-            VStack(spacing: 16) {
-                Button {
-                    onAddAnother()
-                } label: {
-                    Text("Yeni Kelime Ekle")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
-                        .cornerRadius(12)
-                }
-                
-                Button {
-                    onGoToVocabulary()
-                } label: {
-                    Text("Kelimelerime Git")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.gray.opacity(0.2))
-                        .foregroundStyle(.primary)
-                        .cornerRadius(12)
-                }
+                .font(.system(size: 64))
+                .foregroundStyle(DS.Colors.primary)
+                .scaleEffect(appear ? 1.0 : 0.5)
+                .opacity(appear ? 1.0 : 0)
+                .animation(.spring(response: 0.4, dampingFraction: 0.6), value: appear)
+
+            VStack(spacing: DS.Spacing.xs) {
+                Text("Kelime Eklendi!")
+                    .font(.dsTitle)
+                Text("Harika! Çalışmaya devam et.")
+                    .font(.dsCallout)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal)
+
+            VStack(spacing: DS.Spacing.sm) {
+                Button(action: onAddAnother) {
+                    Text("Yeni Kelime Ekle")
+                        .font(.dsHeadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(DS.Spacing.md)
+                        .background(DS.Colors.primary)
+                        .foregroundStyle(DS.Colors.onColor)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onGoToVocabulary) {
+                    Text("Kelimelerime Git")
+                        .font(.dsHeadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(DS.Spacing.md)
+                        .background(Color(uiColor: .secondarySystemBackground))
+                        .foregroundStyle(.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, DS.Spacing.xs)
         }
-        .padding()
-        .presentationDetents([.medium])
+        .padding(DS.Spacing.lg)
+        .presentationDetents([.height(300)])
+        .onAppear { appear = true }
     }
 }
 
