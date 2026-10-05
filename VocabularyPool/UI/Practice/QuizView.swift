@@ -225,7 +225,7 @@ struct QuizView: View {
                             .font(.system(size: 64))
                             .foregroundStyle(score == questions.count ? .yellow : DS.Colors.primary)
 
-                        Text("Session Complete!")
+                        Text("Alıştırma Tamamlandı!")
                             .font(.dsTitle)
 
                         Text("\(score) / \(questions.count)")
@@ -236,11 +236,11 @@ struct QuizView: View {
                         let pct = questions.isEmpty ? 0.0 : Double(score) / Double(questions.count)
                         VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                             HStack {
-                                Text("Accuracy")
+                                Text("Başarı Oranı")
                                     .font(.dsCaption)
                                     .foregroundStyle(.secondary)
                                 Spacer()
-                                Text("\(Int(pct * 100))%")
+                                Text("%\(Int(pct * 100))")
                                     .font(.dsCaption)
                                     .fontWeight(.semibold)
                                     .foregroundStyle(pct >= 0.7 ? DS.Colors.success : DS.Colors.warning)
@@ -268,17 +268,34 @@ struct QuizView: View {
                     Spacer()
 
                     // Action buttons
-                    VStack(spacing: DS.Spacing.sm) {
+                    VStack(spacing: DS.Spacing.md) {
+                        Button {
+                            recordPracticeSession()
+                            restartQuiz()
+                        } label: {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Alıştırmayı Tekrarla")
+                                    .font(.dsHeadline)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(DS.Colors.primary)
+                            .foregroundStyle(DS.Colors.onColor)
+                            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                        }
+
                         Button {
                             recordPracticeSession()
                             dismiss()
                         } label: {
-                            Text("Finish")
+                            Text("Tamamla")
                                 .font(.dsHeadline)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 52)
-                                .background(DS.Colors.primary)
-                                .foregroundStyle(DS.Colors.onColor)
+                                .background(Color.secondary.opacity(0.12))
+                                .foregroundStyle(.primary)
                                 .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
                         }
                     }
@@ -325,6 +342,23 @@ struct QuizView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 speakCurrentWord()
             }
+        }
+    }
+    
+    private func restartQuiz() {
+        withAnimation {
+            prepareQuiz()
+            currentQuestionIndex = 0
+            score = 0
+            userAnswer = ""
+            feedbackMessage = nil
+            isCorrect = false
+            isProcessing = false
+            showAnswerRevealed = false
+            isInputFocused = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            speakCurrentWord()
         }
     }
     
