@@ -114,10 +114,53 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Sort Options & Section Model
+
+enum SortOption: String, CaseIterable, Identifiable {
+    case newest = "En Yeni"
+    case oldest = "En Eski"
+    case alphabeticalAZ = "A → Z (İngilizce)"
+    case alphabeticalZA = "Z → A (İngilizce)"
+    case lowestAccuracy = "En Düşük Başarı"
+    case highestAccuracy = "En Yüksek Başarı"
+
+    var id: String { self.rawValue }
+
+    var shortName: String {
+        switch self {
+        case .newest: return "En Yeni"
+        case .oldest: return "En Eski"
+        case .alphabeticalAZ: return "A-Z"
+        case .alphabeticalZA: return "Z-A"
+        case .lowestAccuracy: return "Zayıf"
+        case .highestAccuracy: return "Başarılı"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .newest: return "clock.arrow.circlepath"
+        case .oldest: return "clock"
+        case .alphabeticalAZ: return "textformat.abc"
+        case .alphabeticalZA: return "textformat.abc"
+        case .lowestAccuracy: return "exclamationmark.triangle.fill"
+        case .highestAccuracy: return "checkmark.seal.fill"
+        }
+    }
+}
+
+struct WordSection: Identifiable {
+    let letter: String
+    let words: [Word]
+    var id: String { letter }
+}
+
 struct VocabularyListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Word.timestamp, order: .reverse) private var words: [Word]
     
+    @AppStorage("vocabularySortOption") private var sortOption: SortOption = .newest
+
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
     @State private var exportFileURL: URL?
@@ -125,47 +168,150 @@ struct VocabularyListView: View {
     @State private var importAlertMessage = ""
     @State private var searchText = ""
     
-    var filteredWords: [Word] {
+    var sortedAndFilteredWords: [Word] {
+        let filtered: [Word]
         if searchText.isEmpty {
-            return words
+            filtered = words
         } else {
-            return words.filter { word in
+            filtered = words.filter { word in
                 word.english.localizedCaseInsensitiveContains(searchText) ||
                 word.turkish.localizedCaseInsensitiveContains(searchText) ||
                 (word.englishAlt?.localizedCaseInsensitiveContains(searchText) ?? false) ||
                 (word.turkishAlt?.localizedCaseInsensitiveContains(searchText) ?? false)
             }
         }
+
+        switch sortOption {
+        case .newest:
+            return filtered.sorted { $0.timestamp > $1.timestamp }
+        case .oldest:
+            return filtered.sorted { $0.timestamp < $1.timestamp }
+        case .alphabeticalAZ:
+            return filtered.sorted { $0.english.localizedCaseInsensitiveCompare($1.english) == .orderedAscending }
+        case .alphabeticalZA:
+            return filtered.sorted { $0.english.localizedCaseInsensitiveCompare($1.english) == .orderedDescending }
+        case .lowestAccuracy:
+            return filtered.sorted { w1, w2 in
+                let t1 = w1.correctCount + w1.wrongCount
+                let r1 = t1 > 0 ? Double(w1.correctCount) / Double(t1) : 1.0
+                let t2 = w2.correctCount + w2.wrongCount
+                let r2 = t2 > 0 ? Double(w2.correctCount) / Double(t2) : 1.0
+                return r1 < r2
+            }
+        case .highestAccuracy:
+            return filtered.sorted { w1, w2 in
+                let t1 = w1.correctCount + w1.wrongCount
+                let r1 = t1 > 0 ? Double(w1.correctCount) / Double(t1) : 0.0
+                let t2 = w2.correctCount + w2.wrongCount
+                let r2 = t2 > 0 ? Double(w2.correctCount) / Double(t2) : 0.0
+                return r1 > r2
+            }
+        }
+    }
+
+    var groupedSections: [WordSection] {
+        let sorted = sortedAndFilteredWords
+        guard sortOption == .alphabeticalAZ || sortOption == .alphabeticalZA else {
+            return [WordSection(letter: "", words: sorted)]
+        }
+
+        let dictionary = Dictionary(grouping: sorted) { word -> String in
+            guard let firstChar = word.english.first else { return "#" }
+            let uppercase = String(firstChar).uppercased()
+            return uppercase.rangeOfCharacter(from: CharacterSet.letters) != nil ? uppercase : "#"
+        }
+
+        let keys: [String]
+        if sortOption == .alphabeticalZA {
+            keys = dictionary.keys.sorted(by: >)
+        } else {
+            keys = dictionary.keys.sorted(by: <)
+        }
+
+        return keys.map { key in
+            WordSection(letter: key, words: dictionary[key] ?? [])
+        }
     }
     
     var body: some View {
         NavigationStack {
-            List {
-                if words.isEmpty {
-                    ContentUnavailableView(
-                        "No Words Yet",
-                        systemImage: "text.book.closed",
-                        description: Text("Tap + to add your first word.")
-                    )
-                } else if filteredWords.isEmpty {
-                    ContentUnavailableView.search
-                } else {
-                    ForEach(filteredWords) { word in
-                        NavigationLink(destination: EditWordView(word: word)) {
-                            WordRowView(word: word)
+            ScrollViewReader { proxy in
+                ZStack(alignment: .trailing) {
+                    List {
+                        if words.isEmpty {
+                            ContentUnavailableView(
+                                "Henüz Kelime Yok",
+                                systemImage: "text.book.closed",
+                                description: Text("+ butonuna basarak ilk kelimenizi ekleyin.")
+                            )
+                        } else if sortedAndFilteredWords.isEmpty {
+                            ContentUnavailableView.search
+                        } else {
+                            ForEach(groupedSections) { section in
+                                Section {
+                                    ForEach(section.words) { word in
+                                        NavigationLink(destination: EditWordView(word: word)) {
+                                            WordRowView(word: word)
+                                        }
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
+                                        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                                    }
+                                    .onDelete { offsets in
+                                        deleteWords(in: section, offsets: offsets)
+                                    }
+                                } header: {
+                                    if !section.letter.isEmpty {
+                                        Text(section.letter)
+                                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                                            .foregroundStyle(DS.Colors.primary)
+                                            .padding(.leading, 8)
+                                            .id("section_\(section.letter)")
+                                    }
+                                }
+                            }
                         }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                     }
-                    .onDelete(perform: deleteWords)
+                    .scrollContentBackground(.hidden)
+
+                    // A-Z Harf İndeksi (Yalnızca alfabetik sıralamada ve 1'den fazla bölüm varsa görünür)
+                    if (sortOption == .alphabeticalAZ || sortOption == .alphabeticalZA) && groupedSections.count > 1 {
+                        AlphabetIndexBar(letters: groupedSections.map { $0.letter }) { selectedLetter in
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo("section_\(selectedLetter)", anchor: .top)
+                            }
+                        }
+                        .padding(.trailing, 4)
+                    }
                 }
             }
-            .scrollContentBackground(.hidden)
-            .navigationTitle("Vocabulary")
+            .navigationTitle("Kelime Havuzu")
             .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $searchText, prompt: "Search words")
+            .searchable(text: $searchText, prompt: "Kelime ara...")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        Picker("Sıralama", selection: $sortOption) {
+                            ForEach(SortOption.allCases) { option in
+                                Label(option.rawValue, systemImage: option.icon)
+                                    .tag(option)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.up.arrow.down")
+                            Text(sortOption.shortName)
+                                .font(.dsCaption)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(DS.Colors.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(DS.Colors.primary.opacity(0.12))
+                        .clipShape(Capsule())
+                    }
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
@@ -210,13 +356,11 @@ struct VocabularyListView: View {
         }
     }
     
-    private func deleteWords(offsets: IndexSet) {
+    private func deleteWords(in section: WordSection, offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                let wordToDelete = filteredWords[index]
-                if let originalIndex = words.firstIndex(where: { $0.id == wordToDelete.id }) {
-                    modelContext.delete(words[originalIndex])
-                }
+                let wordToDelete = section.words[index]
+                modelContext.delete(wordToDelete)
             }
         }
     }
@@ -448,6 +592,34 @@ struct DocumentPicker: UIViewControllerRepresentable {
     
     func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {
         // No updates needed
+    }
+}
+
+// MARK: - Alphabet Index Bar Component
+
+struct AlphabetIndexBar: View {
+    let letters: [String]
+    let onSelectLetter: (String) -> Void
+    @State private var activeLetter: String? = nil
+
+    var body: some View {
+        VStack(spacing: 2) {
+            ForEach(letters, id: \.self) { letter in
+                Text(letter)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(activeLetter == letter ? DS.Colors.primary : Color.secondary)
+                    .frame(width: 18, height: 16)
+                    .onTapGesture {
+                        activeLetter = letter
+                        onSelectLetter(letter)
+                    }
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 2)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .shadow(color: Color.black.opacity(0.12), radius: 4, x: 0, y: 2)
     }
 }
 
