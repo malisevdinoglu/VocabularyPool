@@ -36,6 +36,7 @@ struct PracticeConfigView: View {
         case englishToTurkish = "İngilizce → Türkçe"
         case turkishToEnglish = "Türkçe → İngilizce"
         case listening = "Yazarak Dinle"
+        case matching = "Eşleştirme"
 
         var id: String { self.rawValue }
 
@@ -44,6 +45,7 @@ struct PracticeConfigView: View {
             case .englishToTurkish: return "EN → TR"
             case .turkishToEnglish: return "TR → EN"
             case .listening: return "Dinle"
+            case .matching: return "Eşleştir"
             }
         }
 
@@ -52,6 +54,7 @@ struct PracticeConfigView: View {
             case .englishToTurkish: return "İngilizce kelimenin Türkçe karşılığını yazın"
             case .turkishToEnglish: return "Türkçe kelimenin İngilizce karşılığını yazın"
             case .listening: return "Duyduğunuz İngilizce kelimeyi yazarak test edin"
+            case .matching: return "5 kelimeyi Türkçe karşılıklarıyla eşleştirin"
             }
         }
 
@@ -60,6 +63,7 @@ struct PracticeConfigView: View {
             case .englishToTurkish: return "text.book.closed.fill"
             case .turkishToEnglish: return "globe"
             case .listening: return "headphones"
+            case .matching: return "rectangle.2.swap"
             }
         }
 
@@ -68,6 +72,7 @@ struct PracticeConfigView: View {
             case .englishToTurkish: return DS.Colors.primary
             case .turkishToEnglish: return DS.Colors.accent
             case .listening: return DS.Colors.warning
+            case .matching: return DS.Colors.purple
             }
         }
     }
@@ -148,7 +153,7 @@ struct PracticeConfigView: View {
                     VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                         SectionHeaderView(title: "Pratik Modu Seç", systemImage: "slider.horizontal.3", color: DS.Colors.accent)
 
-                        HStack(spacing: DS.Spacing.sm) {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: DS.Spacing.sm), GridItem(.flexible(), spacing: DS.Spacing.sm)], spacing: DS.Spacing.sm) {
                             ForEach(PracticeType.allCases) { mode in
                                 SelectableModeCard(
                                     mode: mode,
@@ -291,7 +296,7 @@ struct PracticeConfigView: View {
                 VStack(spacing: 0) {
                     Divider()
                     DSPrimaryButton(
-                        title: "Pratiğe Başla (\(count) Soru)",
+                        title: type == .matching ? "Pratiğe Başla (5 Çift Eşleştirme)" : "Pratiğe Başla (\(count) Soru)",
                         isDisabled: words.isEmpty || !isRangeValid
                     ) {
                         showingQuiz = true
@@ -302,12 +307,21 @@ struct PracticeConfigView: View {
                 }
             }
             .navigationDestination(isPresented: $showingQuiz) {
-                QuizView(config: QuizConfig(
-                    count: count,
-                    type: type,
-                    wordRangeStart: wordRangeStart,
-                    wordRangeEnd: wordRangeEnd
-                ))
+                if type == .matching {
+                    MatchingView(config: QuizConfig(
+                        count: 5,
+                        type: .matching,
+                        wordRangeStart: wordRangeStart,
+                        wordRangeEnd: wordRangeEnd
+                    ))
+                } else {
+                    QuizView(config: QuizConfig(
+                        count: count,
+                        type: type,
+                        wordRangeStart: wordRangeStart,
+                        wordRangeEnd: wordRangeEnd
+                    ))
+                }
             }
             .navigationDestination(isPresented: $showingReviewQuiz) {
                 QuizView(config: QuizConfig(
