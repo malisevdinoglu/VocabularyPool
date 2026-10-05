@@ -335,6 +335,20 @@ struct QuizView: View {
             return
         }
 
+        // Weak words mode: wrongCount > 0 or accuracy <= 70%
+        if config.weakWordsMode {
+            questions = allWords.filter { word in
+                let total = word.correctCount + word.wrongCount
+                if word.wrongCount > 0 { return true }
+                if total > 0 {
+                    let rate = Double(word.correctCount) / Double(total)
+                    return rate <= 0.70
+                }
+                return false
+            }.shuffled()
+            return
+        }
+
         // Sort words by timestamp in ascending order (oldest first)
         let sortedWords = allWords.sorted { $0.timestamp < $1.timestamp }
 
