@@ -17,34 +17,207 @@ struct AddWordView: View {
     @State private var turkishAlt = ""
     @State private var showAlternatives = false
     @State private var showSuccessSheet = false
-    @State private var selectedTab: Int?
+    
+    enum FormField: Hashable {
+        case english
+        case turkish
+        case englishAlt
+        case turkishAlt
+    }
+    
+    @FocusState private var focusedField: FormField?
+
+    var isFormValid: Bool {
+        !english.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !turkish.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text("Primary Meanings")) {
-                    TextField("English", text: $english)
-                        .textInputAutocapitalization(.never)
-                    TextField("Turkish", text: $turkish)
-                        .textInputAutocapitalization(.never)
-                }
-                
-                Section {
-                    DisclosureGroup("Alternative Meanings (Optional)", isExpanded: $showAlternatives) {
-                        TextField("Alternative English", text: $englishAlt)
-                            .textInputAutocapitalization(.never)
-                        TextField("Alternative Turkish", text: $turkishAlt)
-                            .textInputAutocapitalization(.never)
+            ScrollView {
+                VStack(spacing: DS.Spacing.lg) {
+                    
+                    // MARK: - 🇬🇧 & 🇹🇷 Temel Anlamlar
+                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                        SectionHeaderView(title: "Temel Anlamlar", systemImage: "character.book.closed.fill", color: DS.Colors.primary)
+
+                        VStack(spacing: DS.Spacing.md) {
+                            // İngilizce Kelime Input
+                            VStack(alignment: .leading, spacing: 6) {
+                                Label("İngilizce Kelime", systemImage: "text.book.closed.fill")
+                                    .font(.dsCaption)
+                                    .foregroundStyle(DS.Colors.primary)
+                                
+                                HStack {
+                                    TextField("örn: facilitate", text: $english)
+                                        .font(.dsHeadline)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .focused($focusedField, equals: .english)
+                                        .submitLabel(.next)
+                                        .onSubmit {
+                                            focusedField = .turkish
+                                        }
+
+                                    if !english.isEmpty {
+                                        Button { english = "" } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                }
+                                .padding(DS.Spacing.md)
+                                .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DS.Radius.md)
+                                        .stroke(focusedField == .english ? DS.Colors.primary : Color.secondary.opacity(0.15), lineWidth: focusedField == .english ? 2 : 1)
+                                )
+                            }
+
+                            // Türkçe Anlamı Input
+                            VStack(alignment: .leading, spacing: 6) {
+                                Label("Türkçe Anlamı", systemImage: "globe")
+                                    .font(.dsCaption)
+                                    .foregroundStyle(DS.Colors.accent)
+
+                                HStack {
+                                    TextField("örn: kolaylaştırmak", text: $turkish)
+                                        .font(.dsHeadline)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .focused($focusedField, equals: .turkish)
+                                        .submitLabel(showAlternatives ? .next : .done)
+                                        .onSubmit {
+                                            if showAlternatives {
+                                                focusedField = .englishAlt
+                                            } else if isFormValid {
+                                                saveWord()
+                                            }
+                                        }
+
+                                    if !turkish.isEmpty {
+                                        Button { turkish = "" } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                }
+                                .padding(DS.Spacing.md)
+                                .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DS.Radius.md)
+                                        .stroke(focusedField == .turkish ? DS.Colors.accent : Color.secondary.opacity(0.15), lineWidth: focusedField == .turkish ? 2 : 1)
+                                )
+                            }
+                        }
                     }
+
+                    // MARK: - ➕ Alternatif Anlamlar (İsteğe Bağlı)
+                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showAlternatives.toggle()
+                                if showAlternatives && focusedField == .turkish {
+                                    focusedField = .englishAlt
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                SectionHeaderView(title: "Alternatif Anlamlar (İsteğe Bağlı)", systemImage: "plus.circle.fill", color: DS.Colors.purple)
+                                Spacer()
+                                Image(systemName: showAlternatives ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+
+                        if showAlternatives {
+                            VStack(spacing: DS.Spacing.md) {
+                                // Alternatif İngilizce
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Alternatif İngilizce Karşılık")
+                                        .font(.dsCaption)
+                                        .foregroundStyle(.secondary)
+
+                                    TextField("örn: make easy", text: $englishAlt)
+                                        .font(.dsBody)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .focused($focusedField, equals: .englishAlt)
+                                        .submitLabel(.next)
+                                        .onSubmit {
+                                            focusedField = .turkishAlt
+                                        }
+                                        .padding(DS.Spacing.md)
+                                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: DS.Radius.md)
+                                                .stroke(focusedField == .englishAlt ? DS.Colors.purple : Color.secondary.opacity(0.15), lineWidth: focusedField == .englishAlt ? 2 : 1)
+                                        )
+                                }
+
+                                // Alternatif Türkçe
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Alternatif Türkçe Karşılık")
+                                        .font(.dsCaption)
+                                        .foregroundStyle(.secondary)
+
+                                    TextField("örn: rahatlatmak", text: $turkishAlt)
+                                        .font(.dsBody)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .focused($focusedField, equals: .turkishAlt)
+                                        .submitLabel(.done)
+                                        .onSubmit {
+                                            if isFormValid {
+                                                saveWord()
+                                            }
+                                        }
+                                        .padding(DS.Spacing.md)
+                                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: DS.Radius.md)
+                                                .stroke(focusedField == .turkishAlt ? DS.Colors.purple : Color.secondary.opacity(0.15), lineWidth: focusedField == .turkishAlt ? 2 : 1)
+                                        )
+                                }
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                    }
+
+                    Spacer(minLength: DS.Spacing.xl)
                 }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.top, DS.Spacing.md)
             }
-            .navigationTitle("Add New Word")
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationTitle("Yeni Kelime Ekle")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("Kaydet") {
                         saveWord()
                     }
-                    .disabled(english.isEmpty || turkish.isEmpty)
+                    .disabled(!isFormValid)
+                    .fontWeight(.semibold)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 0) {
+                    Divider()
+                    DSPrimaryButton(
+                        title: "Kelimeyi Kaydet",
+                        isDisabled: !isFormValid
+                    ) {
+                        saveWord()
+                    }
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .background(.ultraThinMaterial)
                 }
             }
             .sheet(isPresented: $showSuccessSheet) {
@@ -52,27 +225,38 @@ struct AddWordView: View {
                     onAddAnother: {
                         showSuccessSheet = false
                         clearForm()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            focusedField = .english
+                        }
                     },
                     onGoToVocabulary: {
                         showSuccessSheet = false
-                        // Switch to vocabulary tab (tab index 0)
+                        clearForm()
                         NotificationCenter.default.post(name: NSNotification.Name("SwitchToVocabularyTab"), object: nil)
                     }
                 )
             }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    focusedField = .english
+                }
+            }
             .onDisappear {
-                // Clear form when navigating away from this tab
                 clearForm()
             }
         }
     }
     
     private func saveWord() {
+        let trimmedEng = english.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedTur = turkish.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedEng.isEmpty, !trimmedTur.isEmpty else { return }
+
         let newWord = Word(
-            english: english,
-            turkish: turkish,
-            englishAlt: englishAlt.isEmpty ? nil : englishAlt,
-            turkishAlt: turkishAlt.isEmpty ? nil : turkishAlt
+            english: trimmedEng,
+            turkish: trimmedTur,
+            englishAlt: englishAlt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : englishAlt.trimmingCharacters(in: .whitespacesAndNewlines),
+            turkishAlt: turkishAlt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : turkishAlt.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         modelContext.insert(newWord)
         
