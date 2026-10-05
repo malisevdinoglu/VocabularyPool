@@ -487,7 +487,7 @@ struct FlashcardView: View {
                 modelContext.insert(session)
             }
 
-            session.englishToTurkishCount += cards.count
+            session.flashcardsCount += cards.count
             try modelContext.save()
         } catch {
             print("Failed to record flashcard session: \(error)")

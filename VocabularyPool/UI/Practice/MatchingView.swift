@@ -350,7 +350,7 @@ struct MatchingView: View {
                 modelContext.insert(session)
             }
 
-            session.englishToTurkishCount += englishWords.count
+            session.matchingCount += englishWords.count
             try modelContext.save()
         } catch {
             print("Failed to record matching session: \(error)")
