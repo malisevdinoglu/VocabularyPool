@@ -154,7 +154,7 @@ struct PracticeConfigView: View {
                     activeQuizConfig = config
                     showingQuiz = true
                 }
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.fraction(0.74), .fraction(0.86)])
                 .presentationDragIndicator(.visible)
             }
             .navigationDestination(isPresented: $showingQuiz) {
@@ -175,7 +175,7 @@ struct PracticeConfigView: View {
     }
 }
 
-// MARK: - 🎛️ Practice Config Bottom Sheet
+// MARK: - 🎛️ Practice Config Bottom Sheet (Zero-Scroll Compact Layout)
 struct PracticeConfigSheetView: View {
     let mode: PracticeConfigView.PracticeType
     let totalWordsCount: Int
@@ -189,7 +189,7 @@ struct PracticeConfigSheetView: View {
         case all = "Tüm Havuz"
         case review = "Hatalı Kelimeler"
         case weak = "Zayıf Kelimeler"
-        case range = "Özel Kelime Aralığı"
+        case range = "Özel Aralık"
 
         var id: String { rawValue }
     }
@@ -226,7 +226,7 @@ struct PracticeConfigSheetView: View {
                 ZStack {
                     Circle()
                         .fill(mode.color.opacity(0.15))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 42, height: 42)
                     Image(systemName: mode.icon)
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(mode.color)
@@ -257,143 +257,145 @@ struct PracticeConfigSheetView: View {
 
             Divider()
 
-            ScrollView {
-                VStack(spacing: DS.Spacing.lg) {
+            VStack(spacing: DS.Spacing.lg) {
 
-                    // MARK: Section 1: Kelime Kaynağı
-                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                        SectionHeaderView(title: "Kelime Kaynağı Seçin", systemImage: "tray.full.fill", color: mode.color)
+                // MARK: Section 1: Kelime Kaynağı (2x2 Compact Grid)
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                    SectionHeaderView(title: "Kelime Kaynağı Seçin", systemImage: "tray.full.fill", color: mode.color)
 
-                        VStack(spacing: DS.Spacing.xs) {
-                            ForEach(WordSource.allCases) { source in
-                                let countBadge: Int? = {
-                                    switch source {
-                                    case .all: return totalWordsCount
-                                    case .review: return reviewWordsCount
-                                    case .weak: return weakWordsCount
-                                    case .range: return nil
-                                    }
-                                }()
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: DS.Spacing.sm), GridItem(.flexible(), spacing: DS.Spacing.sm)], spacing: DS.Spacing.sm) {
+                        ForEach(WordSource.allCases) { source in
+                            let countBadge: Int? = {
+                                switch source {
+                                case .all: return totalWordsCount
+                                case .review: return reviewWordsCount
+                                case .weak: return weakWordsCount
+                                case .range: return nil
+                                }
+                            }()
 
-                                let isDisabled: Bool = {
-                                    switch source {
-                                    case .review: return reviewWordsCount == 0
-                                    case .weak: return weakWordsCount == 0
-                                    default: return false
-                                    }
-                                }()
+                            let isDisabled: Bool = {
+                                switch source {
+                                case .review: return reviewWordsCount == 0
+                                case .weak: return weakWordsCount == 0
+                                default: return false
+                                }
+                            }()
 
-                                Button {
-                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                                        selectedSource = source
-                                    }
-                                } label: {
+                            Button {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                    selectedSource = source
+                                }
+                            } label: {
+                                VStack(alignment: .leading, spacing: 6) {
                                     HStack {
-                                        Text(source.rawValue)
-                                            .font(.dsBody)
-                                            .fontWeight(selectedSource == source ? .semibold : .regular)
-                                            .foregroundStyle(isDisabled ? .secondary : (selectedSource == source ? mode.color : .primary))
-
+                                        Image(systemName: selectedSource == source ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(selectedSource == source ? mode.color : Color.secondary.opacity(0.3))
                                         Spacer()
-
                                         if let badge = countBadge {
-                                            Text("\(badge) Kelime")
-                                                .font(.dsCaption)
-                                                .fontWeight(.bold)
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 3)
+                                            Text("\(badge)")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
                                                 .background(selectedSource == source ? mode.color.opacity(0.15) : Color(uiColor: .tertiarySystemFill))
                                                 .foregroundStyle(selectedSource == source ? mode.color : .secondary)
                                                 .clipShape(Capsule())
                                         }
-
-                                        Image(systemName: selectedSource == source ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 18))
-                                            .foregroundStyle(selectedSource == source ? mode.color : Color.secondary.opacity(0.3))
                                     }
-                                    .padding(DS.Spacing.md)
-                                    .background(Color(uiColor: .secondarySystemGroupedBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: DS.Radius.md)
-                                            .stroke(selectedSource == source ? mode.color : Color.clear, lineWidth: 1.5)
-                                    )
+
+                                    Text(source.rawValue)
+                                        .font(.dsCallout)
+                                        .fontWeight(selectedSource == source ? .semibold : .regular)
+                                        .foregroundStyle(isDisabled ? .secondary : (selectedSource == source ? mode.color : .primary))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.85)
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(isDisabled)
+                                .padding(DS.Spacing.sm + 2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DS.Radius.md)
+                                        .stroke(selectedSource == source ? mode.color : Color.clear, lineWidth: 1.5)
+                                )
                             }
-                        }
-
-                        // Range Inputs
-                        if selectedSource == .range {
-                            VStack(spacing: DS.Spacing.sm) {
-                                HStack(spacing: DS.Spacing.md) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Başlangıç (Sıra)")
-                                            .font(.dsCaption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("1", text: $fromText)
-                                            .keyboardType(.numberPad)
-                                            .padding(DS.Spacing.sm)
-                                            .background(Color(uiColor: .tertiarySystemBackground))
-                                            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                                            )
-                                            .onChange(of: fromText) { _, val in fromText = val.filter { $0.isNumber } }
-                                    }
-
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Bitiş (Sıra)")
-                                            .font(.dsCaption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("\(totalWordsCount)", text: $toText)
-                                            .keyboardType(.numberPad)
-                                            .padding(DS.Spacing.sm)
-                                            .background(Color(uiColor: .tertiarySystemBackground))
-                                            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                                            )
-                                            .onChange(of: toText) { _, val in toText = val.filter { $0.isNumber } }
-                                    }
-                                }
-
-                                if !isRangeValid {
-                                    Text("Geçersiz aralık. Başlangıç ≤ Bitiş ve her ikisi de ≤ \(totalWordsCount) olmalıdır.")
-                                        .font(.dsCaption)
-                                        .foregroundStyle(DS.Colors.danger)
-                                }
-                            }
-                            .padding(.top, 4)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .buttonStyle(.plain)
+                            .disabled(isDisabled)
                         }
                     }
 
-                    // MARK: Section 2: Soru / Kelime Sayısı
-                    if mode != .matching {
-                        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                            SectionHeaderView(title: "Soru / Kelime Sayısı", systemImage: "number", color: mode.color)
+                    // Range Inputs
+                    if selectedSource == .range {
+                        VStack(spacing: DS.Spacing.sm) {
+                            HStack(spacing: DS.Spacing.md) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Başlangıç (Sıra)")
+                                        .font(.dsCaption)
+                                        .foregroundStyle(.secondary)
+                                    TextField("1", text: $fromText)
+                                        .keyboardType(.numberPad)
+                                        .padding(DS.Spacing.sm)
+                                        .background(Color(uiColor: .tertiarySystemBackground))
+                                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                        )
+                                        .onChange(of: fromText) { _, val in fromText = val.filter { $0.isNumber } }
+                                }
 
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DS.Spacing.sm), count: 3), spacing: DS.Spacing.sm) {
-                                ForEach([5, 10, 15, 20, 25, 30], id: \.self) { n in
-                                    NumberChipButton(
-                                        number: n,
-                                        isSelected: questionCount == n
-                                    ) {
-                                        withAnimation(.easeInOut(duration: 0.15)) {
-                                            questionCount = n
-                                        }
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Bitiş (Sıra)")
+                                        .font(.dsCaption)
+                                        .foregroundStyle(.secondary)
+                                    TextField("\(totalWordsCount)", text: $toText)
+                                        .keyboardType(.numberPad)
+                                        .padding(DS.Spacing.sm)
+                                        .background(Color(uiColor: .tertiarySystemBackground))
+                                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                        )
+                                        .onChange(of: toText) { _, val in toText = val.filter { $0.isNumber } }
+                                }
+                            }
+
+                            if !isRangeValid {
+                                Text("Geçersiz aralık. Başlangıç ≤ Bitiş ve her ikisi de ≤ \(totalWordsCount) olmalıdır.")
+                                    .font(.dsCaption)
+                                    .foregroundStyle(DS.Colors.danger)
+                            }
+                        }
+                        .padding(.top, 4)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+
+                // MARK: Section 2: Soru / Kelime Sayısı
+                if mode != .matching {
+                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                        SectionHeaderView(title: "Soru / Kelime Sayısı", systemImage: "number", color: mode.color)
+
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DS.Spacing.sm), count: 3), spacing: DS.Spacing.sm) {
+                            ForEach([5, 10, 15, 20, 25, 30], id: \.self) { n in
+                                NumberChipButton(
+                                    number: n,
+                                    isSelected: questionCount == n
+                                ) {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        questionCount = n
                                     }
                                 }
                             }
                         }
                     }
                 }
-                .padding(.horizontal, DS.Spacing.md)
             }
+            .padding(.horizontal, DS.Spacing.md)
+
+            Spacer()
 
             // MARK: Start Button
             VStack(spacing: 0) {
