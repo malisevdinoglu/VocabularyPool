@@ -37,6 +37,7 @@ struct PracticeConfigView: View {
         case turkishToEnglish = "Türkçe → İngilizce"
         case listening = "Yazarak Dinle"
         case matching = "Eşleştirme"
+        case flashcards = "Kartlar"
 
         var id: String { self.rawValue }
 
@@ -46,6 +47,7 @@ struct PracticeConfigView: View {
             case .turkishToEnglish: return "TR → EN"
             case .listening: return "Dinle"
             case .matching: return "Eşleştir"
+            case .flashcards: return "Kartlar"
             }
         }
 
@@ -55,6 +57,7 @@ struct PracticeConfigView: View {
             case .turkishToEnglish: return "Türkçe kelimenin İngilizce karşılığını yazın"
             case .listening: return "Duyduğunuz İngilizce kelimeyi yazarak test edin"
             case .matching: return "5 kelimeyi Türkçe karşılıklarıyla eşleştirin"
+            case .flashcards: return "3D çevirmeli & kaydırmalı akıllı kartlar"
             }
         }
 
@@ -64,6 +67,7 @@ struct PracticeConfigView: View {
             case .turkishToEnglish: return "globe"
             case .listening: return "headphones"
             case .matching: return "rectangle.2.swap"
+            case .flashcards: return "rectangle.stack.fill"
             }
         }
 
@@ -73,6 +77,7 @@ struct PracticeConfigView: View {
             case .turkishToEnglish: return DS.Colors.accent
             case .listening: return DS.Colors.warning
             case .matching: return DS.Colors.purple
+            case .flashcards: return DS.Colors.total
             }
         }
     }
@@ -311,6 +316,13 @@ struct PracticeConfigView: View {
                     MatchingView(config: QuizConfig(
                         count: 5,
                         type: .matching,
+                        wordRangeStart: wordRangeStart,
+                        wordRangeEnd: wordRangeEnd
+                    ))
+                } else if type == .flashcards {
+                    FlashcardView(config: QuizConfig(
+                        count: count,
+                        type: .flashcards,
                         wordRangeStart: wordRangeStart,
                         wordRangeEnd: wordRangeEnd
                     ))
