@@ -401,10 +401,26 @@ struct QuizView: View {
             wordsToUse = sortedWords
         }
 
-        // Shuffle and select questions
-        let shuffled = wordsToUse.shuffled()
-        let count = min(config.count, shuffled.count)
-        questions = Array(shuffled.prefix(count))
+        // Select questions to match target config.count
+        guard !wordsToUse.isEmpty else {
+            questions = []
+            return
+        }
+
+        var selected: [Word] = []
+        let targetCount = config.count
+
+        if wordsToUse.count >= targetCount {
+            selected = Array(wordsToUse.shuffled().prefix(targetCount))
+        } else {
+            while selected.count < targetCount {
+                let needed = targetCount - selected.count
+                let batch = wordsToUse.shuffled()
+                selected.append(contentsOf: batch.prefix(needed))
+            }
+        }
+
+        questions = selected
     }
     
     private func speakCurrentWord() {

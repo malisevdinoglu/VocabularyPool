@@ -425,9 +425,25 @@ struct FlashcardView: View {
             }
         }
 
-        let shuffled = wordsToUse.shuffled()
-        let count = min(config.count, shuffled.count)
-        cards = Array(shuffled.prefix(count))
+        guard !wordsToUse.isEmpty else {
+            cards = []
+            return
+        }
+
+        var selected: [Word] = []
+        let targetCount = config.count
+
+        if wordsToUse.count >= targetCount {
+            selected = Array(wordsToUse.shuffled().prefix(targetCount))
+        } else {
+            while selected.count < targetCount {
+                let needed = targetCount - selected.count
+                let batch = wordsToUse.shuffled()
+                selected.append(contentsOf: batch.prefix(needed))
+            }
+        }
+
+        cards = selected
 
         currentIndex = 0
         knownCount = 0
