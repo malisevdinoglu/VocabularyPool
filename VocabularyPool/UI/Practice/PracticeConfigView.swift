@@ -36,6 +36,7 @@ struct PracticeConfigView: View {
         case englishToTurkish = "İngilizce → Türkçe"
         case turkishToEnglish = "Türkçe → İngilizce"
         case listening = "Yazarak Dinle"
+        case audioListening = "Otomatik Sesli Dinleme"
         case matching = "Eşleştirme"
         case flashcards = "Kartlar"
 
@@ -45,7 +46,8 @@ struct PracticeConfigView: View {
             switch self {
             case .englishToTurkish: return "EN → TR"
             case .turkishToEnglish: return "TR → EN"
-            case .listening: return "Dinle"
+            case .listening: return "Yazarak Dinle"
+            case .audioListening: return "Oto Dinle"
             case .matching: return "Eşleştir"
             case .flashcards: return "Kartlar"
             }
@@ -56,6 +58,7 @@ struct PracticeConfigView: View {
             case .englishToTurkish: return "İngilizce kelimenin Türkçe karşılığını yazın"
             case .turkishToEnglish: return "Türkçe kelimenin İngilizce karşılığını yazın"
             case .listening: return "Duyduğunuz İngilizce kelimeyi yazarak test edin"
+            case .audioListening: return "Kelimeleri ve Türkçe karşılıklarını sırayla otomatik dinleyin"
             case .matching: return "5 kelimeyi Türkçe karşılıklarıyla eşleştirin"
             case .flashcards: return "3D çevirmeli & kaydırmalı akıllı kartlar"
             }
@@ -66,6 +69,7 @@ struct PracticeConfigView: View {
             case .englishToTurkish: return "text.book.closed.fill"
             case .turkishToEnglish: return "globe"
             case .listening: return "headphones"
+            case .audioListening: return "headphones.circle.fill"
             case .matching: return "rectangle.2.swap"
             case .flashcards: return "rectangle.stack.fill"
             }
@@ -76,6 +80,7 @@ struct PracticeConfigView: View {
             case .englishToTurkish: return DS.Colors.primary
             case .turkishToEnglish: return DS.Colors.accent
             case .listening: return DS.Colors.warning
+            case .audioListening: return Color.orange
             case .matching: return DS.Colors.purple
             case .flashcards: return DS.Colors.total
             }
@@ -301,7 +306,7 @@ struct PracticeConfigView: View {
                 VStack(spacing: 0) {
                     Divider()
                     DSPrimaryButton(
-                        title: type == .matching ? "Pratiğe Başla (5 Çift Eşleştirme)" : "Pratiğe Başla (\(count) Soru)",
+                        title: type == .matching ? "Pratiğe Başla (5 Çift Eşleştirme)" : (type == .audioListening ? "Dinlemeyi Başlat (\(count) Kelime)" : "Pratiğe Başla (\(count) Soru)"),
                         isDisabled: words.isEmpty || !isRangeValid
                     ) {
                         showingQuiz = true
@@ -323,6 +328,13 @@ struct PracticeConfigView: View {
                     FlashcardView(config: QuizConfig(
                         count: count,
                         type: .flashcards,
+                        wordRangeStart: wordRangeStart,
+                        wordRangeEnd: wordRangeEnd
+                    ))
+                } else if type == .audioListening {
+                    AudioListeningView(config: QuizConfig(
+                        count: count,
+                        type: .audioListening,
                         wordRangeStart: wordRangeStart,
                         wordRangeEnd: wordRangeEnd
                     ))
