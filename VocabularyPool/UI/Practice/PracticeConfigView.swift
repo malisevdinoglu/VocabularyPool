@@ -13,19 +13,19 @@ struct QuizConfig {
     var type: PracticeConfigView.PracticeType
     var wordRangeStart: Int?
     var wordRangeEnd: Int?
-    var reviewMode: Bool = false
     var weakWordsMode: Bool = false
 }
 
 struct PracticeConfigView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var words: [Word]
-    @Query(filter: #Predicate<Word> { $0.needsReview == true }) private var reviewWords: [Word]
 
     @State private var selectedModeForSheet: PracticeType? = nil
     @State private var activeQuizConfig: QuizConfig? = nil
     @State private var showingQuiz = false
     @State private var showingSettings = false
+    @State private var showingNoVerbsAlert = false
+    @State private var showingNoPhrasalAlert = false
 
     enum PracticeType: String, CaseIterable, Identifiable {
         case englishToTurkish = "İngilizce → Türkçe"
@@ -34,6 +34,9 @@ struct PracticeConfigView: View {
         case audioListening = "Otomatik Sesli Dinleme"
         case matching = "Eşleştirme"
         case flashcards = "Kartlar"
+        case verbConjugations = "Fiil Çekimleri"
+        case phrasalVerbs = "Phrasal Verbs"
+        case phrasalFlashcards = "Phrasal Kartlar"
 
         var id: String { self.rawValue }
 
@@ -45,6 +48,9 @@ struct PracticeConfigView: View {
             case .audioListening: return "Oto Dinle"
             case .matching: return "Eşleştir"
             case .flashcards: return "Kartlar"
+            case .verbConjugations: return "Fiiller"
+            case .phrasalVerbs: return "Phrasal Verbs"
+            case .phrasalFlashcards: return "Phrasal Kart"
             }
         }
 
@@ -56,6 +62,9 @@ struct PracticeConfigView: View {
             case .audioListening: return "Kelimeleri ve Türkçe karşılıklarını sırayla otomatik dinleyin"
             case .matching: return "5 kelimeyi Türkçe karşılıklarıyla eşleştirin"
             case .flashcards: return "3D çevirmeli & kaydırmalı akıllı kartlar"
+            case .verbConjugations: return "Düzensiz fiillerin V1, V2, V3 hallerini kaydırarak tekrar edin"
+            case .phrasalVerbs: return "Deyimsel fiillerin Türkçe karşılıklarını yazın"
+            case .phrasalFlashcards: return "Deyimsel fiilleri 3D çevirmeli akıllı kartlarla çalışın"
             }
         }
 
@@ -67,6 +76,9 @@ struct PracticeConfigView: View {
             case .audioListening: return "headphones.circle.fill"
             case .matching: return "rectangle.2.swap"
             case .flashcards: return "rectangle.stack.fill"
+            case .verbConjugations: return "repeat.circle.fill"
+            case .phrasalVerbs: return "books.vertical.fill"
+            case .phrasalFlashcards: return "rectangle.stack.badge.play.fill"
             }
         }
 
@@ -78,16 +90,44 @@ struct PracticeConfigView: View {
             case .audioListening: return Color.orange
             case .matching: return DS.Colors.purple
             case .flashcards: return DS.Colors.total
+            case .verbConjugations: return DS.Colors.purple
+            case .phrasalVerbs: return Color(red: 0.545, green: 0.361, blue: 0.965)
+            case .phrasalFlashcards: return Color(red: 0.45, green: 0.28, blue: 0.88)
             }
         }
     }
 
+    var standardWords: [Word] {
+        words.filter { !$0.isVerb && !$0.isPhrasalVerb }
+    }
+
     var totalWords: Int {
-        words.count
+        standardWords.count
+    }
+
+    var verbWordsCount: Int {
+        words.filter { $0.isVerb }.count
+    }
+
+    var phrasalWordsCount: Int {
+        words.filter { $0.isPhrasalVerb }.count
     }
 
     var weakWords: [Word] {
+        standardWords.filter { word in
+            let total = word.correctCount + word.wrongCount
+            if word.wrongCount > 0 { return true }
+            if total > 0 {
+                let rate = Double(word.correctCount) / Double(total)
+                return rate <= 0.70
+            }
+            return false
+        }
+    }
+
+    var weakPhrasalWords: [Word] {
         words.filter { word in
+            guard word.isPhrasalVerb else { return false }
             let total = word.correctCount + word.wrongCount
             if word.wrongCount > 0 { return true }
             if total > 0 {
@@ -114,14 +154,30 @@ struct PracticeConfigView: View {
                     }
                     .padding(.horizontal, 4)
 
-                    // MARK: 6 Practice Mode Cards Grid
+                    // MARK: Practice Mode Cards Grid
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: DS.Spacing.sm), GridItem(.flexible(), spacing: DS.Spacing.sm)], spacing: DS.Spacing.sm) {
                         ForEach(PracticeType.allCases) { mode in
                             SelectableModeCard(
                                 mode: mode,
-                                isSelected: false
+                                isSelected: false,
+                                badge: mode == .verbConjugations ? "\(verbWordsCount) Fiil" : ((mode == .phrasalVerbs || mode == .phrasalFlashcards) ? "\(phrasalWordsCount) Phrasal" : nil)
                             ) {
-                                selectedModeForSheet = mode
+                                if mode == .verbConjugations {
+                                    if verbWordsCount == 0 {
+                                        showingNoVerbsAlert = true
+                                    } else {
+                                        activeQuizConfig = QuizConfig(count: 0, type: .verbConjugations)
+                                        showingQuiz = true
+                                    }
+                                } else if mode == .phrasalVerbs || mode == .phrasalFlashcards {
+                                    if phrasalWordsCount == 0 {
+                                        showingNoPhrasalAlert = true
+                                    } else {
+                                        selectedModeForSheet = mode
+                                    }
+                                } else {
+                                    selectedModeForSheet = mode
+                                }
                             }
                         }
                     }
@@ -131,6 +187,16 @@ struct PracticeConfigView: View {
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Pratik Yap")
+            .alert("Henüz Fiil Eklenmedi", isPresented: $showingNoVerbsAlert) {
+                Button("Anladım", role: .cancel) { }
+            } message: {
+                Text("Fiil çekimleri alıştırması yapabilmek için 'Kelime Ekle' sayfasından 'Fiil Çekimi' seçeneği ile en az 1 adet düzensiz fiil eklemelisiniz.")
+            }
+            .alert("Henüz Phrasal Verb Eklenmedi", isPresented: $showingNoPhrasalAlert) {
+                Button("Anladım", role: .cancel) { }
+            } message: {
+                Text("Phrasal Verbs alıştırması yapabilmek için 'Kelime Ekle' sayfasından 'Phrasal Verbs' seçeneği ile en az 1 adet deyimsel fiil eklemelisiniz.")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -147,9 +213,8 @@ struct PracticeConfigView: View {
             .sheet(item: $selectedModeForSheet) { mode in
                 PracticeConfigSheetView(
                     mode: mode,
-                    totalWordsCount: totalWords,
-                    reviewWordsCount: reviewWords.count,
-                    weakWordsCount: weakWords.count
+                    totalWordsCount: (mode == .phrasalVerbs || mode == .phrasalFlashcards) ? phrasalWordsCount : totalWords,
+                    weakWordsCount: (mode == .phrasalVerbs || mode == .phrasalFlashcards) ? weakPhrasalWords.count : weakWords.count
                 ) { config in
                     activeQuizConfig = config
                     showingQuiz = true
@@ -162,10 +227,12 @@ struct PracticeConfigView: View {
                     switch config.type {
                     case .matching:
                         MatchingView(config: config)
-                    case .flashcards:
+                    case .flashcards, .phrasalFlashcards:
                         FlashcardView(config: config)
                     case .audioListening:
                         AudioListeningView(config: config)
+                    case .verbConjugations:
+                        VerbConjugationView()
                     default:
                         QuizView(config: config)
                     }
@@ -179,7 +246,6 @@ struct PracticeConfigView: View {
 struct PracticeConfigSheetView: View {
     let mode: PracticeConfigView.PracticeType
     let totalWordsCount: Int
-    let reviewWordsCount: Int
     let weakWordsCount: Int
     let onStart: (QuizConfig) -> Void
 
@@ -187,7 +253,6 @@ struct PracticeConfigSheetView: View {
 
     enum WordSource: String, CaseIterable, Identifiable {
         case all = "Tüm Havuz"
-        case review = "Hatalı Kelimeler"
         case weak = "Zayıf Kelimeler"
         case range = "Özel Aralık"
 
@@ -259,16 +324,15 @@ struct PracticeConfigSheetView: View {
 
             VStack(spacing: DS.Spacing.lg) {
 
-                // MARK: Section 1: Kelime Kaynağı (2x2 Compact Grid)
+                // MARK: Section 1: Kelime Kaynağı (3-Column Layout)
                 VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                     SectionHeaderView(title: "Kelime Kaynağı Seçin", systemImage: "tray.full.fill", color: mode.color)
 
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: DS.Spacing.sm), GridItem(.flexible(), spacing: DS.Spacing.sm)], spacing: DS.Spacing.sm) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DS.Spacing.sm), count: 3), spacing: DS.Spacing.sm) {
                         ForEach(WordSource.allCases) { source in
                             let countBadge: Int? = {
                                 switch source {
                                 case .all: return totalWordsCount
-                                case .review: return reviewWordsCount
                                 case .weak: return weakWordsCount
                                 case .range: return nil
                                 }
@@ -276,7 +340,6 @@ struct PracticeConfigSheetView: View {
 
                             let isDisabled: Bool = {
                                 switch source {
-                                case .review: return reviewWordsCount == 0
                                 case .weak: return weakWordsCount == 0
                                 default: return false
                                 }
@@ -415,7 +478,6 @@ struct PracticeConfigSheetView: View {
                         type: mode,
                         wordRangeStart: wordRangeStart,
                         wordRangeEnd: wordRangeEnd,
-                        reviewMode: selectedSource == .review,
                         weakWordsMode: selectedSource == .weak
                     )
                     dismiss()
@@ -428,7 +490,7 @@ struct PracticeConfigSheetView: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .onAppear {
             if let saved = WordSource(rawValue: savedSourceRaw) {
-                if (saved == .review && reviewWordsCount == 0) || (saved == .weak && weakWordsCount == 0) {
+                if saved == .weak && weakWordsCount == 0 {
                     selectedSource = .all
                 } else {
                     selectedSource = saved
@@ -464,34 +526,48 @@ struct SectionHeaderView: View {
 struct SelectableModeCard: View {
     let mode: PracticeConfigView.PracticeType
     let isSelected: Bool
+    var badge: String? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: DS.Spacing.sm) {
-                ZStack {
-                    Circle()
-                        .fill(mode.color.opacity(0.12))
-                        .frame(width: 48, height: 48)
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: DS.Spacing.sm) {
+                    ZStack {
+                        Circle()
+                            .fill(mode.color.opacity(0.12))
+                            .frame(width: 48, height: 48)
 
-                    Image(systemName: mode.icon)
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(mode.color)
+                        Image(systemName: mode.icon)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(mode.color)
+                    }
+
+                    Text(mode.shortTitle)
+                        .font(.dsHeadline)
+                        .foregroundStyle(.primary)
+
+                    Text(mode.rawValue)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DS.Spacing.lg)
+                .padding(.horizontal, DS.Spacing.xs)
 
-                Text(mode.shortTitle)
-                    .font(.dsHeadline)
-                    .foregroundStyle(.primary)
-
-                Text(mode.rawValue)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                if let badge = badge {
+                    Text(badge)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(mode.color)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(mode.color.opacity(0.14))
+                        .clipShape(Capsule())
+                        .padding(8)
+                }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, DS.Spacing.lg)
-            .padding(.horizontal, DS.Spacing.xs)
             .background(Color(uiColor: .secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg))
             .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)

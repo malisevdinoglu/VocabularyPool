@@ -489,13 +489,49 @@ struct AudioListeningView: View {
         .onAppear {
             prepareAndStart()
         }
+        .onChange(of: playerManager.isFinished) { _, finished in
+            if finished {
+                recordPracticeSession(count: playerManager.words.count)
+            }
+        }
         .onDisappear {
             playerManager.pause()
         }
     }
 
+    private func recordPracticeSession(count: Int) {
+        guard count > 0 else { return }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return }
+        
+        let descriptor = FetchDescriptor<PracticeSession>(
+            predicate: #Predicate { session in
+                session.date >= today && session.date < tomorrow
+            }
+        )
+        
+        do {
+            let sessions = try modelContext.fetch(descriptor)
+            let session: PracticeSession
+            
+            if let existingSession = sessions.first {
+                session = existingSession
+            } else {
+                session = PracticeSession(date: today)
+                modelContext.insert(session)
+            }
+            
+            session.audioListeningCount += count
+            try modelContext.save()
+        } catch {
+            print("Failed to record practice session: \(error)")
+        }
+    }
+
     private func prepareAndStart() {
-        let sorted = allWords.sorted(by: { $0.timestamp < $1.timestamp })
+        let pool = allWords.filter { !$0.isVerb && !$0.isPhrasalVerb }
+        let sorted = pool.sorted(by: { $0.timestamp < $1.timestamp })
         var wordsToPlay: [Word] = []
 
         if let start = config.wordRangeStart, let end = config.wordRangeEnd, start <= end {

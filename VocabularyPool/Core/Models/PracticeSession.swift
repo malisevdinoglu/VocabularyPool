@@ -18,6 +18,8 @@ final class PracticeSession {
     var audioListeningCount: Int = 0
     var flashcardsCount: Int = 0
     var matchingCount: Int = 0
+    var verbConjugationsCount: Int = 0
+    var phrasalVerbsCount: Int = 0
     
     // Legacy goal snapshots preserved for schema compatibility
     var dailyGoalEngToTr: Int = 0
@@ -32,6 +34,8 @@ final class PracticeSession {
         audioListeningCount: Int = 0,
         flashcardsCount: Int = 0,
         matchingCount: Int = 0,
+        verbConjugationsCount: Int = 0,
+        phrasalVerbsCount: Int = 0,
         dailyGoalEngToTr: Int = 0,
         dailyGoalTrToEng: Int = 0,
         dailyGoalListening: Int = 0
@@ -43,6 +47,8 @@ final class PracticeSession {
         self.audioListeningCount = audioListeningCount
         self.flashcardsCount = flashcardsCount
         self.matchingCount = matchingCount
+        self.verbConjugationsCount = verbConjugationsCount
+        self.phrasalVerbsCount = phrasalVerbsCount
         self.dailyGoalEngToTr = dailyGoalEngToTr
         self.dailyGoalTrToEng = dailyGoalTrToEng
         self.dailyGoalListening = dailyGoalListening

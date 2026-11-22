@@ -20,26 +20,87 @@ struct EditWordView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Primary Meanings")) {
-                    TextField("English", text: $word.english)
-                        .textInputAutocapitalization(.never)
-                    TextField("Turkish", text: $word.turkish)
-                        .textInputAutocapitalization(.never)
+                Section(header: Text("Kelime Türü")) {
+                    Picker("Tür", selection: Binding(
+                        get: {
+                            if word.isVerb { return 1 }
+                            if word.isPhrasalVerb { return 2 }
+                            return 0
+                        },
+                        set: { newValue in
+                            word.isVerb = (newValue == 1)
+                            word.isPhrasalVerb = (newValue == 2)
+                        }
+                    )) {
+                        Text("Standart").tag(0)
+                        Text("Fiil").tag(1)
+                        Text("Phrasal").tag(2)
+                    }
+                    .pickerStyle(.segmented)
                 }
-                
-                Section {
-                    DisclosureGroup("Alternative Meanings (Optional)", isExpanded: $showAlternatives) {
-                        TextField("Alternative English", text: Binding(
-                            get: { word.englishAlt ?? "" },
-                            set: { word.englishAlt = $0.isEmpty ? nil : $0 }
+
+                if word.isVerb {
+                    Section(header: Text("Fiil Çekimleri")) {
+                        TextField("V1 (Base Form)", text: $word.english)
+                            .textInputAutocapitalization(.never)
+                        TextField("V2 (Past Simple)", text: Binding(
+                            get: { word.v2 ?? "" },
+                            set: { word.v2 = $0.isEmpty ? nil : $0 }
                         ))
                         .textInputAutocapitalization(.never)
-                        
-                        TextField("Alternative Turkish", text: Binding(
-                            get: { word.turkishAlt ?? "" },
-                            set: { word.turkishAlt = $0.isEmpty ? nil : $0 }
+                        TextField("V3 (Past Participle)", text: Binding(
+                            get: { word.v3 ?? "" },
+                            set: { word.v3 = $0.isEmpty ? nil : $0 }
                         ))
                         .textInputAutocapitalization(.never)
+                        TextField("Türkçe Anlamı", text: $word.turkish)
+                            .textInputAutocapitalization(.never)
+                    }
+                } else if word.isPhrasalVerb {
+                    Section(header: Text("Phrasal Verb Anlamları")) {
+                        TextField("İngilizce Phrasal Verb", text: $word.english)
+                            .textInputAutocapitalization(.never)
+                        TextField("Türkçe Anlamı", text: $word.turkish)
+                            .textInputAutocapitalization(.never)
+                    }
+                    
+                    Section {
+                        DisclosureGroup("Alternatif Anlamlar (İsteğe Bağlı)", isExpanded: $showAlternatives) {
+                            TextField("Alternatif İngilizce", text: Binding(
+                                get: { word.englishAlt ?? "" },
+                                set: { word.englishAlt = $0.isEmpty ? nil : $0 }
+                            ))
+                            .textInputAutocapitalization(.never)
+                            
+                            TextField("Alternatif Türkçe", text: Binding(
+                                get: { word.turkishAlt ?? "" },
+                                set: { word.turkishAlt = $0.isEmpty ? nil : $0 }
+                            ))
+                            .textInputAutocapitalization(.never)
+                        }
+                    }
+                } else {
+                    Section(header: Text("Temel Anlamlar")) {
+                        TextField("İngilizce", text: $word.english)
+                            .textInputAutocapitalization(.never)
+                        TextField("Türkçe", text: $word.turkish)
+                            .textInputAutocapitalization(.never)
+                    }
+                    
+                    Section {
+                        DisclosureGroup("Alternatif Anlamlar (İsteğe Bağlı)", isExpanded: $showAlternatives) {
+                            TextField("Alternatif İngilizce", text: Binding(
+                                get: { word.englishAlt ?? "" },
+                                set: { word.englishAlt = $0.isEmpty ? nil : $0 }
+                            ))
+                            .textInputAutocapitalization(.never)
+                            
+                            TextField("Alternatif Türkçe", text: Binding(
+                                get: { word.turkishAlt ?? "" },
+                                set: { word.turkishAlt = $0.isEmpty ? nil : $0 }
+                            ))
+                            .textInputAutocapitalization(.never)
+                        }
                     }
                 }
                 

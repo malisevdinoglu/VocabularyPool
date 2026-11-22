@@ -42,7 +42,7 @@ struct FlashcardView: View {
                     // MARK: - Progress & Header Info
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Akıllı Kartlar")
+                            Text(config.type == .phrasalFlashcards ? "Phrasal Kartlar" : "Akıllı Kartlar")
                                 .font(.dsHeadline)
                                 .foregroundStyle(.primary)
                             Text("Karta dokunarak anlamını görün, sağa/sola kaydırın")
@@ -335,7 +335,7 @@ struct FlashcardView: View {
                 }
             }
         }
-        .navigationTitle("Akıllı Kartlar")
+        .navigationTitle(config.type == .phrasalFlashcards ? "Phrasal Kartlar" : "Akıllı Kartlar")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             prepareFlashcards()
@@ -352,7 +352,6 @@ struct FlashcardView: View {
         generator.impactOccurred()
 
         word.correctCount += 1
-        word.needsReview = false
         knownCount += 1
 
         animateCardExit(toRight: true)
@@ -363,7 +362,6 @@ struct FlashcardView: View {
         generator.notificationOccurred(.warning)
 
         word.wrongCount += 1
-        word.needsReview = true
         unknownCount += 1
 
         animateCardExit(toRight: false)
@@ -401,17 +399,16 @@ struct FlashcardView: View {
     }
 
     private func prepareFlashcards() {
+        let pool = config.type == .phrasalFlashcards ? allWords.filter { $0.isPhrasalVerb } : allWords.filter { !$0.isVerb && !$0.isPhrasalVerb }
         var wordsToUse: [Word]
 
-        if config.reviewMode {
-            wordsToUse = allWords.filter { $0.needsReview }
-        } else if config.weakWordsMode {
-            wordsToUse = allWords.filter { word in
+        if config.weakWordsMode {
+            wordsToUse = pool.filter { word in
                 let total = word.correctCount + word.wrongCount
                 return word.wrongCount > 0 || (total > 0 && (Double(word.correctCount) / Double(total)) <= 0.70)
             }
         } else {
-            let sorted = allWords.sorted { $0.timestamp < $1.timestamp }
+            let sorted = pool.sorted { $0.timestamp < $1.timestamp }
             if let start = config.wordRangeStart, let end = config.wordRangeEnd {
                 let startIndex = max(0, start - 1)
                 let endIndex = min(sorted.count - 1, end - 1)
@@ -487,7 +484,11 @@ struct FlashcardView: View {
                 modelContext.insert(session)
             }
 
-            session.flashcardsCount += cards.count
+            if config.type == .phrasalFlashcards {
+                session.phrasalVerbsCount += cards.count
+            } else {
+                session.flashcardsCount += cards.count
+            }
             try modelContext.save()
         } catch {
             print("Failed to record flashcard session: \(error)")

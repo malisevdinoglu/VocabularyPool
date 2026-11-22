@@ -231,7 +231,6 @@ struct MatchingView: View {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 matchedWords.insert(eng)
                 eng.correctCount += 1
-                eng.needsReview = false
                 selectedEnglish = nil
                 selectedTurkish = nil
             }
@@ -249,7 +248,6 @@ struct MatchingView: View {
             generator.notificationOccurred(.error)
 
             eng.wrongCount += 1
-            eng.needsReview = true
             wrongAttempts += 1
 
             shakingEnglishWord = eng
@@ -278,17 +276,16 @@ struct MatchingView: View {
     }
 
     private func prepareMatching() {
+        let pool = allWords.filter { !$0.isVerb && !$0.isPhrasalVerb }
         var wordsToUse: [Word]
 
-        if config.reviewMode {
-            wordsToUse = allWords.filter { $0.needsReview }
-        } else if config.weakWordsMode {
-            wordsToUse = allWords.filter { word in
+        if config.weakWordsMode {
+            wordsToUse = pool.filter { word in
                 let total = word.correctCount + word.wrongCount
                 return word.wrongCount > 0 || (total > 0 && (Double(word.correctCount) / Double(total)) <= 0.70)
             }
         } else {
-            let sorted = allWords.sorted { $0.timestamp < $1.timestamp }
+            let sorted = pool.sorted { $0.timestamp < $1.timestamp }
             if let start = config.wordRangeStart, let end = config.wordRangeEnd {
                 let startIndex = max(0, start - 1)
                 let endIndex = min(sorted.count - 1, end - 1)

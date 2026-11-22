@@ -18,6 +18,10 @@ struct WordExport: Codable, Identifiable {
     var turkish: String
     var englishAlt: String?
     var turkishAlt: String?
+    var isVerb: Bool?
+    var isPhrasalVerb: Bool?
+    var v2: String?
+    var v3: String?
     var correctCount: Int
     var wrongCount: Int
     var lastStudied: Date?
@@ -29,6 +33,10 @@ struct WordExport: Codable, Identifiable {
         self.turkish = word.turkish
         self.englishAlt = word.englishAlt
         self.turkishAlt = word.turkishAlt
+        self.isVerb = word.isVerb
+        self.isPhrasalVerb = word.isPhrasalVerb
+        self.v2 = word.v2
+        self.v3 = word.v3
         self.correctCount = word.correctCount
         self.wrongCount = word.wrongCount
         self.lastStudied = word.lastStudied
@@ -41,6 +49,10 @@ struct WordExport: Codable, Identifiable {
             turkish: turkish,
             englishAlt: englishAlt,
             turkishAlt: turkishAlt,
+            isVerb: isVerb ?? false,
+            isPhrasalVerb: isPhrasalVerb ?? false,
+            v2: v2,
+            v3: v3,
             timestamp: timestamp
         )
         // Restore statistics
@@ -68,7 +80,7 @@ struct VocabularyExport: Codable {
 
 struct ContentView: View {
     @State private var selectedTab = 0
-    @Query(filter: #Predicate<Word> { $0.needsReview == true }) private var reviewWords: [Word]
+    @Query private var words: [Word]
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -92,12 +104,11 @@ struct ContentView: View {
             .tabItem {
                 Label("Practice", systemImage: "play.circle.fill")
             }
-            .badge(reviewWords.isEmpty ? 0 : reviewWords.count)
             .tag(2)
 
             StatisticsView()
                 .tabItem {
-                    Label("Statistics", systemImage: "chart.bar.fill")
+                    Label("İstatistikler", systemImage: "chart.bar.fill")
                 }
                 .tag(3)
         }
@@ -110,6 +121,11 @@ struct ContentView: View {
             if PracticeGoals.shared.isNewWeek() {
                 PracticeGoals.shared.updateWeekStart()
             }
+            // Schedule hourly weak word notifications
+            NotificationManager.shared.scheduleHourlyWeakWordNotifications(words: words)
+        }
+        .onChange(of: words.count) { _, _ in
+            NotificationManager.shared.scheduleHourlyWeakWordNotifications(words: words)
         }
     }
 }
@@ -149,6 +165,14 @@ enum SortOption: String, CaseIterable, Identifiable {
     }
 }
 
+enum WordFilter: String, CaseIterable, Identifiable {
+    case words = "Kelimeler"
+    case verbs = "Fiil Çekimleri"
+    case phrasalVerbs = "Phrasal Verbs"
+
+    var id: String { self.rawValue }
+}
+
 struct WordSection: Identifiable {
     let letter: String
     let words: [Word]
@@ -161,6 +185,7 @@ struct VocabularyListView: View {
     
     @AppStorage("vocabularySortOption") private var sortOption: SortOption = .newest
 
+    @State private var selectedFilter: WordFilter = .words
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
     @State private var exportFileURL: URL?
@@ -169,16 +194,28 @@ struct VocabularyListView: View {
     @State private var searchText = ""
     
     var sortedAndFilteredWords: [Word] {
-        let filtered: [Word]
+        let searched: [Word]
         if searchText.isEmpty {
-            filtered = words
+            searched = words
         } else {
-            filtered = words.filter { word in
+            searched = words.filter { word in
                 word.english.localizedCaseInsensitiveContains(searchText) ||
                 word.turkish.localizedCaseInsensitiveContains(searchText) ||
                 (word.englishAlt?.localizedCaseInsensitiveContains(searchText) ?? false) ||
-                (word.turkishAlt?.localizedCaseInsensitiveContains(searchText) ?? false)
+                (word.turkishAlt?.localizedCaseInsensitiveContains(searchText) ?? false) ||
+                (word.v2?.localizedCaseInsensitiveContains(searchText) ?? false) ||
+                (word.v3?.localizedCaseInsensitiveContains(searchText) ?? false)
             }
+        }
+
+        let filtered: [Word]
+        switch selectedFilter {
+        case .words:
+            filtered = searched.filter { !$0.isVerb && !$0.isPhrasalVerb }
+        case .verbs:
+            filtered = searched.filter { $0.isVerb }
+        case .phrasalVerbs:
+            filtered = searched.filter { $0.isPhrasalVerb }
         }
 
         switch sortOption {
@@ -235,8 +272,34 @@ struct VocabularyListView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollViewReader { proxy in
-                ZStack(alignment: .trailing) {
+            VStack(spacing: 0) {
+                // Filter Chips Bar
+                HStack(spacing: 8) {
+                    ForEach(WordFilter.allCases) { filter in
+                        let isSelected = selectedFilter == filter
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedFilter = filter
+                            }
+                        } label: {
+                            Text(filter.rawValue)
+                                .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                                .foregroundStyle(isSelected ? Color.white : DS.Colors.primary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(isSelected ? DS.Colors.primary : DS.Colors.primary.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(uiColor: .systemGroupedBackground))
+
+                ScrollViewReader { proxy in
+                    ZStack(alignment: .trailing) {
                     List {
                         if words.isEmpty {
                             ContentUnavailableView(
@@ -285,7 +348,8 @@ struct VocabularyListView: View {
                     }
                 }
             }
-            .navigationTitle("Kelime Havuzu")
+        }
+        .navigationTitle("Kelime Havuzu")
             .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "Kelime ara...")
             .toolbar {
@@ -540,22 +604,43 @@ struct WordRowView: View {
 
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    if let alt = word.englishAlt, !alt.isEmpty {
-                        Text("\(word.english) (\(alt))")
-                            .font(.dsHeadline)
-                    } else {
+                    if word.isVerb, let v2 = word.v2, let v3 = word.v3 {
                         Text(word.english)
                             .font(.dsHeadline)
-                    }
 
-                    if let alt = word.turkishAlt, !alt.isEmpty {
-                        Text("\(word.turkish) (\(alt))")
+                        Text("V2: \(v2)  •  V3: \(v3)")
                             .font(.dsCallout)
                             .foregroundStyle(.secondary)
                     } else {
-                        Text(word.turkish)
-                            .font(.dsCallout)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: DS.Spacing.xs) {
+                            if let alt = word.englishAlt, !alt.isEmpty {
+                                Text("\(word.english) (\(alt))")
+                                    .font(.dsHeadline)
+                            } else {
+                                Text(word.english)
+                                    .font(.dsHeadline)
+                            }
+
+                            if word.isPhrasalVerb {
+                                Text("Phrasal")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(DS.Colors.purple)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(DS.Colors.purple.opacity(0.12))
+                                    .clipShape(Capsule())
+                            }
+                        }
+
+                        if let alt = word.turkishAlt, !alt.isEmpty {
+                            Text("\(word.turkish) (\(alt))")
+                                .font(.dsCallout)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(word.turkish)
+                                .font(.dsCallout)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 

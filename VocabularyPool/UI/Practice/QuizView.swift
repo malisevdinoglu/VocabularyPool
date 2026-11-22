@@ -74,7 +74,7 @@ struct QuizView: View {
                                                     .foregroundStyle(.white.opacity(0.85))
                                             }
                                         } else {
-                                            Text(config.type == .englishToTurkish
+                                            Text((config.type == .englishToTurkish || config.type == .phrasalVerbs)
                                                  ? questions[currentQuestionIndex].english
                                                  : questions[currentQuestionIndex].turkish)
                                                 .font(.dsDisplay)
@@ -304,7 +304,7 @@ struct QuizView: View {
                 }
             }
         }
-        .navigationTitle(config.reviewMode ? "Hataları Pekiştir" : "Practice")
+        .navigationTitle("Alıştırma")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // Listening modunda ses butonu gösterme (zaten her zaman açık)
@@ -363,15 +363,16 @@ struct QuizView: View {
     }
     
     private func prepareQuiz() {
-        // Review mode: use only words flagged for review, shuffled
-        if config.reviewMode {
-            questions = allWords.filter { $0.needsReview }.shuffled()
-            return
+        let pool: [Word]
+        if config.type == .phrasalVerbs {
+            pool = allWords.filter { $0.isPhrasalVerb }
+        } else {
+            pool = allWords.filter { !$0.isVerb && !$0.isPhrasalVerb }
         }
 
         // Weak words mode: wrongCount > 0 or accuracy <= 70%
         if config.weakWordsMode {
-            questions = allWords.filter { word in
+            questions = pool.filter { word in
                 let total = word.correctCount + word.wrongCount
                 if word.wrongCount > 0 { return true }
                 if total > 0 {
@@ -384,7 +385,7 @@ struct QuizView: View {
         }
 
         // Sort words by timestamp in ascending order (oldest first)
-        let sortedWords = allWords.sorted { $0.timestamp < $1.timestamp }
+        let sortedWords = pool.sorted { $0.timestamp < $1.timestamp }
 
         // Filter by range if specified
         var wordsToUse: [Word]
@@ -435,7 +436,7 @@ struct QuizView: View {
         let languageCode: String
         
         // Determine what to speak based on practice type
-        if config.type == .englishToTurkish || config.type == .listening {
+        if config.type == .englishToTurkish || config.type == .listening || config.type == .phrasalVerbs {
             textToSpeak = currentWord.english
             languageCode = "en-US"
         } else {
@@ -470,7 +471,7 @@ struct QuizView: View {
         // Build list of correct answers
         var correctAnswers: [String] = []
         
-        if config.type == .englishToTurkish {
+        if config.type == .englishToTurkish || config.type == .phrasalVerbs {
             // Normalize Turkish answer
             correctAnswers.append(currentWord.turkish.trimmingCharacters(in: .whitespacesAndNewlines)
                 .lowercased()
@@ -498,13 +499,12 @@ struct QuizView: View {
         }
         
         if isAnswerCorrect {
-            // Correct — clear review flag so it leaves the mistake queue
+            // Correct
             isProcessing = true
             isCorrect = true
             feedbackMessage = "Doğru!"
             score += 1
             currentWord.correctCount += 1
-            currentWord.needsReview = false
 
             // Move to next question after delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -517,11 +517,10 @@ struct QuizView: View {
                 }
             }
         } else {
-            // Wrong — mark for review
+            // Wrong
             isCorrect = false
             feedbackMessage = "Yanlış!"
             currentWord.wrongCount += 1
-            currentWord.needsReview = true
         }
         
         // In listening mode, if correct, show the Turkish meaning
@@ -540,7 +539,7 @@ struct QuizView: View {
         let correctAnswer: String
         let alternativeAnswer: String?
         
-        if config.type == .englishToTurkish {
+        if config.type == .englishToTurkish || config.type == .phrasalVerbs {
             correctAnswer = currentWord.turkish
             alternativeAnswer = currentWord.turkishAlt
         } else {
@@ -564,7 +563,6 @@ struct QuizView: View {
         feedbackMessage = message
         isCorrect = false
         showAnswerRevealed = true
-        currentWord.needsReview = true
 
         // Update statistics if not already marked wrong
         if feedbackMessage?.contains("Yanlış") == false {
@@ -602,9 +600,6 @@ struct QuizView: View {
             let sessions = try modelContext.fetch(descriptor)
             let session: PracticeSession
             
-            // Determine if this is the first session of the day
-            let isFirstSessionToday = sessions.isEmpty
-            
             if let existingSession = sessions.first {
                 session = existingSession
                 
@@ -633,6 +628,8 @@ struct QuizView: View {
             // Update counts based on practice type
             if config.type == .listening {
                 session.listeningCount += questions.count
+            } else if config.type == .phrasalVerbs {
+                session.phrasalVerbsCount += questions.count
             } else if config.type == .englishToTurkish {
                 session.englishToTurkishCount += questions.count
             } else {
