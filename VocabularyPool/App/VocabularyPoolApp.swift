@@ -51,7 +51,10 @@ struct VocabularyPoolApp: App {
                 .onAppear {
                     // Pass model container to AppDelegate
                     appDelegate.modelContainer = sharedModelContainer
-                    
+
+                    // One-time safe hydration of legacy weak words for Schema V6
+                    LearningEngine.bootstrapLegacyWeakWordsIfNeeded(context: sharedModelContainer.mainContext)
+
                     // Request notification permission on app launch
                     NotificationManager.shared.requestPermission { granted in
                         print("Notification permission granted: \(granted)")

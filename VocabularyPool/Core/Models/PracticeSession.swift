@@ -4,13 +4,14 @@
 //
 //  Created by Assistant on 05.01.2026.
 //
+
 import Foundation
 import SwiftData
 
-/// PracticeSession, bir gün içindeki çalışma oturumunu temsil eden kalıcı bir modeldir.
+/// Persistent daily practice log capturing completed counts across all modes.
 @Model
 final class PracticeSession {
-    
+
     var date: Date
     var englishToTurkishCount: Int
     var turkishToEnglishCount: Int
@@ -20,12 +21,16 @@ final class PracticeSession {
     var matchingCount: Int = 0
     var verbConjugationsCount: Int = 0
     var phrasalVerbsCount: Int = 0
-    
+
+    // Schema V6 additions
+    var multipleChoiceCount: Int = 0
+    var smartMixCount: Int = 0
+
     // Legacy goal snapshots preserved for schema compatibility
     var dailyGoalEngToTr: Int = 0
     var dailyGoalTrToEng: Int = 0
     var dailyGoalListening: Int = 0
-    
+
     init(
         date: Date = Date(),
         englishToTurkishCount: Int = 0,
@@ -36,6 +41,8 @@ final class PracticeSession {
         matchingCount: Int = 0,
         verbConjugationsCount: Int = 0,
         phrasalVerbsCount: Int = 0,
+        multipleChoiceCount: Int = 0,
+        smartMixCount: Int = 0,
         dailyGoalEngToTr: Int = 0,
         dailyGoalTrToEng: Int = 0,
         dailyGoalListening: Int = 0
@@ -49,8 +56,23 @@ final class PracticeSession {
         self.matchingCount = matchingCount
         self.verbConjugationsCount = verbConjugationsCount
         self.phrasalVerbsCount = phrasalVerbsCount
+        self.multipleChoiceCount = multipleChoiceCount
+        self.smartMixCount = smartMixCount
         self.dailyGoalEngToTr = dailyGoalEngToTr
         self.dailyGoalTrToEng = dailyGoalTrToEng
         self.dailyGoalListening = dailyGoalListening
+    }
+
+    var totalCount: Int {
+        englishToTurkishCount
+        + turkishToEnglishCount
+        + listeningCount
+        + audioListeningCount
+        + flashcardsCount
+        + matchingCount
+        + verbConjugationsCount
+        + phrasalVerbsCount
+        + multipleChoiceCount
+        + smartMixCount
     }
 }
